@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm test:*)",
+      "Bash(curl:*)",
+      "Bash(wc:*)",
+      "Bash(go version:*)",
+      "Bash(go mod:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)"
+    ]
+  }
+}

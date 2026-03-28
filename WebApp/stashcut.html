@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stashcut — Keyboard Shortcut Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f0f11;
+    --bg2:       #17171a;
+    --bg3:       #1e1e23;
+    --bg4:       #26262d;
+    --border:    #2e2e38;
+    --border2:   #3a3a46;
+    --text:      #e8e8f0;
+    --text2:     #9898ac;
+    --text3:     #5c5c72;
+    --accent:    #7c6cfa;
+    --accent2:   #a594ff;
+    --accent-bg: rgba(124,108,250,0.12);
+    --green:     #3ecf8e;
+    --green-bg:  rgba(62,207,142,0.1);
+    --amber:     #f5a623;
+    --amber-bg:  rgba(245,166,35,0.1);
+    --red:       #f56565;
+    --red-bg:    rgba(245,101,101,0.1);
+    --mac-color: #5b9cf6;
+    --win-color: #3ecf8e;
+    --radius:    8px;
+    --radius-lg: 12px;
+    --sidebar-w: 240px;
+    --font-ui:   'DM Sans', sans-serif;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+  /* Layout */
+  #root { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── WELCOME SCREEN ── */
+  .welcome {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--bg);
+    position: relative; overflow: hidden;
+  }
+  .welcome::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(124,108,250,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .welcome-inner { position: relative; z-index: 1; text-align: center; max-width: 420px; padding: 2rem; }
+  .welcome-logo {
+    font-family: var(--font-head); font-size: 48px; font-weight: 800; letter-spacing: -2px;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 8px;
+  }
+  .welcome-logo span { color: var(--accent2); -webkit-text-fill-color: var(--accent2); }
+  .welcome-tag { color: var(--text2); font-size: 15px; font-weight: 300; margin-bottom: 48px; letter-spacing: 0.02em; }
+  .welcome-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+  .btn-primary {
+    padding: 14px 24px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-lg);
+    font-family: var(--font-ui); font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-secondary {
+    padding: 14px 24px; background: var(--bg3); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    font-family: var(--font-ui); font-size: 15px; font-weight: 400; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-secondary:hover { background: var(--bg4); border-color: var(--border2); }
+  .welcome-hint { margin-top: 32px; font-size: 12px; color: var(--text3); }
+  .welcome-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px; opacity: 0.3;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 80%);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--bg2);
+    border-right: 1px solid var(--border); display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { font-family: var(--font-head); font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo span { color: var(--accent2); }
+  .sidebar-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 28px; height: 28px; border-radius: var(--radius); border: none;
+    background: transparent; color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; font-size: 16px;
+  }
+  .icon-btn:hover { background: var(--bg4); color: var(--text); }
+
+  .sidebar-search {
+    padding: 12px 12px 8px;
+  }
+  .search-input {
+    width: 100%; padding: 7px 10px 7px 30px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-ui); font-size: 13px;
+    outline: none; transition: border-color 0.15s; position: relative;
+  }
+  .search-input::placeholder { color: var(--text3); }
+  .search-input:focus { border-color: var(--accent); }
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 13px; pointer-events: none; }
+
+  .sidebar-section { padding: 4px 8px; }
+  .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); padding: 8px 8px 4px; }
+  .app-list { flex: 1; overflow-y: auto; padding: 4px 8px 8px; }
+
+  .app-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius);
+    cursor: pointer; transition: all 0.12s; position: relative; group: true;
+  }
+  .app-item:hover { background: var(--bg3); }
+  .app-item.active { background: var(--accent-bg); }
+  .app-item.active .app-name { color: var(--accent2); }
+  .app-icon-wrap {
+    width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; overflow: hidden; font-weight: 600; font-family: var(--font-head);
+  }
+  .app-name { font-size: 13px; font-weight: 400; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-count {
+    font-size: 10px; font-weight: 500; color: var(--text3); background: var(--bg4);
+    padding: 2px 6px; border-radius: 10px; flex-shrink: 0;
+  }
+  .app-item.active .app-count { color: var(--accent); background: var(--accent-bg); }
+
+  .add-app-btn {
+    margin: 0 8px 8px; padding: 8px; border-radius: var(--radius); border: 1px dashed var(--border);
+    background: transparent; color: var(--text3); cursor: pointer; display: flex; align-items: center;
+    gap: 6px; font-family: var(--font-ui); font-size: 13px; transition: all 0.12s; width: calc(100% - 16px);
+  }
+  .add-app-btn:hover { border-color: var(--accent); color: var(--accent2); background: var(--accent-bg); }
+
+  .sidebar-footer { padding: 8px; border-top: 1px solid var(--border); }
+  .settings-btn {
+    width: 100%; padding: 8px 10px; border-radius: var(--radius); border: none;
+    background: transparent; color: var(--text2); cursor: pointer; display: flex; align-items: center;
+    gap: 8px; font-family: var(--font-ui); font-size: 13px; transition: all 0.12s;
+  }
+  .settings-btn:hover { background: var(--bg3); color: var(--text); }
+
+  /* ── MAIN PANEL ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+  .toolbar {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .search-main {
+    flex: 1; padding: 8px 14px 8px 36px; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-ui); font-size: 14px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .search-main::placeholder { color: var(--text3); }
+  .search-main:focus { border-color: var(--accent); background: var(--bg3); }
+  .search-main-wrap { position: relative; flex: 1; }
+  .search-main-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text3); }
+
+  .os-toggle { display: flex; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .os-btn {
+    padding: 6px 12px; border: none; background: transparent; color: var(--text2);
+    font-family: var(--font-ui); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .os-btn:hover { color: var(--text); background: var(--bg3); }
+  .os-btn.active { background: var(--bg4); color: var(--text); }
+  .os-btn.mac.active { color: var(--mac-color); }
+  .os-btn.win.active { color: var(--win-color); }
+
+  .panel-title {
+    padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between;
+  }
+  .panel-title h2 { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .panel-title .count { font-size: 12px; color: var(--text3); margin-left: 8px; }
+
+  .shortcut-list { flex: 1; overflow-y: auto; padding: 12px 24px 24px; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; }
+  .empty-icon { font-size: 40px; opacity: 0.2; }
+  .empty-title { font-family: var(--font-head); font-size: 18px; font-weight: 600; color: var(--text2); }
+  .empty-sub { font-size: 13px; color: var(--text3); text-align: center; max-width: 280px; line-height: 1.6; }
+  .btn-sm {
+    margin-top: 8px; padding: 8px 18px; background: var(--accent); color: #fff; border: none;
+    border-radius: var(--radius); font-family: var(--font-ui); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-sm:hover { background: var(--accent2); }
+  .btn-sm-ghost {
+    padding: 8px 18px; background: transparent; color: var(--text2); border: 1px solid var(--border);
+    border-radius: var(--radius); font-family: var(--font-ui); font-size: 13px; cursor: pointer;
+    transition: all 0.12s;
+  }
+  .btn-sm-ghost:hover { border-color: var(--border2); color: var(--text); background: var(--bg3); }
+
+  /* ── SHORTCUT ROWS ── */
+  .section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text3); padding: 16px 0 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .shortcut-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    border-radius: var(--radius-lg); transition: background 0.12s; position: relative;
+    cursor: default; border: 1px solid transparent; margin-bottom: 2px;
+  }
+  .shortcut-row:hover { background: var(--bg2); border-color: var(--border); }
+  .shortcut-row.is-favorite { }
+
+  .drag-handle {
+    color: var(--text3); font-size: 12px; cursor: grab; opacity: 0;
+    transition: opacity 0.12s; flex-shrink: 0;
+  }
+  .shortcut-row:hover .drag-handle { opacity: 1; }
+
+  .star-btn {
+    background: none; border: none; cursor: pointer; font-size: 15px;
+    color: var(--text3); transition: all 0.12s; flex-shrink: 0; padding: 2px;
+    line-height: 1;
+  }
+  .star-btn:hover { color: var(--amber); transform: scale(1.15); }
+  .star-btn.starred { color: var(--amber); }
+
+  .shortcut-desc { flex: 1; font-size: 13px; color: var(--text); font-weight: 400; min-width: 0; }
+
+  .key-group { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex-shrink: 0; }
+  .key-row { display: flex; align-items: center; gap: 6px; }
+  .key-os-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); width: 28px; text-align: right; }
+  .key-os-label.mac { color: var(--mac-color); opacity: 0.7; }
+  .key-os-label.win { color: var(--win-color); opacity: 0.7; }
+
+  .key-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 8px; border-radius: 5px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--text2);
+    white-space: nowrap; letter-spacing: 0.02em;
+  }
+  .key-badge.mac-badge { border-color: rgba(91,156,246,0.2); color: var(--mac-color); background: rgba(91,156,246,0.06); }
+  .key-badge.win-badge { border-color: rgba(62,207,142,0.2); color: var(--win-color); background: rgba(62,207,142,0.06); }
+  .key-badge.both-badge { border-color: var(--border2); color: var(--text2); }
+
+  .row-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
+  .shortcut-row:hover .row-actions { opacity: 1; }
+  .row-action-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text3); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; transition: all 0.12s;
+  }
+  .row-action-btn:hover { background: var(--bg4); color: var(--text); }
+  .row-action-btn.delete:hover { color: var(--red); background: var(--red-bg); }
+
+  /* Add shortcut row */
+  .add-shortcut-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    border-radius: var(--radius-lg); border: 1px dashed var(--border);
+    color: var(--text3); cursor: pointer; transition: all 0.12s; margin-top: 8px;
+    font-size: 13px;
+  }
+  .add-shortcut-row:hover { border-color: var(--accent); color: var(--accent2); background: var(--accent-bg); }
+
+  /* ── MODAL / FORM ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    animation: fadeIn 0.15s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto;
+    animation: slideUp 0.2s cubic-bezier(0.16,1,0.3,1);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .modal-header {
+    padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-family: var(--font-head); font-size: 16px; font-weight: 700; }
+  .modal-close {
+    width: 28px; height: 28px; border-radius: var(--radius); border: none;
+    background: transparent; color: var(--text2); cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.12s;
+  }
+  .modal-close:hover { background: var(--bg4); color: var(--text); }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 12px; font-weight: 500; color: var(--text2); letter-spacing: 0.03em; display: flex; align-items: center; gap: 6px; }
+  .form-label .os-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .form-label .os-dot.mac { background: var(--mac-color); }
+  .form-label .os-dot.win { background: var(--win-color); }
+  .form-input {
+    padding: 9px 12px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-ui); font-size: 14px;
+    outline: none; transition: border-color 0.15s; width: 100%;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--text3); }
+
+  .key-input-wrap { display: flex; gap: 6px; }
+  .key-input {
+    flex: 1; padding: 9px 12px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-mono); font-size: 13px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .key-input:focus { border-color: var(--accent); }
+  .key-input.recording { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .key-input::placeholder { color: var(--text3); font-family: var(--font-ui); font-size: 13px; }
+
+  .record-btn {
+    padding: 0 12px; background: var(--bg4); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text2); font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.12s; white-space: nowrap; display: flex; align-items: center; gap: 4px;
+  }
+  .record-btn:hover { border-color: var(--border2); color: var(--text); }
+  .record-btn.recording { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+  .record-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .record-btn.recording .record-dot { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .same-both { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .same-both input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+  .same-both span { font-size: 12px; color: var(--text2); }
+
+  .form-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* App icon picker */
+  .icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .icon-option {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px;
+    border-radius: var(--radius); cursor: pointer; border: 1px solid transparent; transition: all 0.12s;
+  }
+  .icon-option:hover { background: var(--bg3); border-color: var(--border); }
+  .icon-option.selected { background: var(--accent-bg); border-color: var(--accent); }
+  .icon-option-label { font-size: 9px; color: var(--text3); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+
+  /* ── SETTINGS PANEL ── */
+  .settings-modal .modal-body { gap: 20px; }
+  .settings-section { display: flex; flex-direction: column; gap: 10px; }
+  .settings-section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg3); border-radius: var(--radius); border: 1px solid var(--border); }
+  .settings-row-label { font-size: 13px; color: var(--text2); }
+  .settings-row-value { font-size: 12px; color: var(--text3); font-family: var(--font-mono); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .settings-row-actions { display: flex; gap: 6px; }
+  .btn-mini {
+    padding: 4px 10px; background: var(--bg4); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text2); font-family: var(--font-ui); font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.12s;
+  }
+  .btn-mini:hover { border-color: var(--border2); color: var(--text); }
+  .btn-mini.accent { background: var(--accent-bg); border-color: rgba(124,108,250,0.3); color: var(--accent2); }
+  .btn-mini.accent:hover { background: var(--accent); color: #fff; }
+
+  /* ── SAFARI BANNER ── */
+  .safari-banner {
+    background: var(--amber-bg); border-bottom: 1px solid rgba(245,166,35,0.2);
+    padding: 8px 20px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--amber);
+  }
+  .safari-banner button { margin-left: auto; padding: 4px 12px; background: var(--amber); color: var(--bg); border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: var(--font-ui); }
+
+  /* ── SEARCH RESULTS ── */
+  .search-group-header { font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; padding: 14px 12px 6px; display: flex; align-items: center; gap: 6px; }
+
+  /* ── TOAST ── */
+  .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 10px 16px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; color: var(--text); box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: toastIn 0.2s ease; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.success { border-color: rgba(62,207,142,0.3); }
+  .toast.error { border-color: rgba(245,101,101,0.3); color: var(--red); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* utils */
+  .flex { display: flex; }
+  .flex-1 { flex: 1; }
+  .gap-2 { gap: 8px; }
+  .mt-2 { margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useRef, useCallback, createContext, useContext, useReducer } = React;
+
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+
+const APP_VERSION = '1.0.0';
+const SCHEMA_VERSION = '1.0';
+
+const BUILTIN_ICONS = {
+  chrome:   { emoji: '🌐', label: 'Chrome',   bg: '#1a73e8', fg: '#fff' },
+  firefox:  { emoji: '🦊', label: 'Firefox',  bg: '#e66000', fg: '#fff' },
+  safari:   { emoji: '🧭', label: 'Safari',   bg: '#006cbe', fg: '#fff' },
+  vscode:   { emoji: '💻', label: 'VS Code',  bg: '#007acc', fg: '#fff' },
+  figma:    { emoji: '🎨', label: 'Figma',    bg: '#f24e1e', fg: '#fff' },
+  slack:    { emoji: '💬', label: 'Slack',    bg: '#4a154b', fg: '#fff' },
+  notion:   { emoji: '📝', label: 'Notion',   bg: '#000',    fg: '#fff' },
+  terminal: { emoji: '⌨️', label: 'Terminal', bg: '#1e1e1e', fg: '#0f0' },
+  finder:   { emoji: '📁', label: 'Finder',   bg: '#2196f3', fg: '#fff' },
+  excel:    { emoji: '📊', label: 'Excel',    bg: '#217346', fg: '#fff' },
+  word:     { emoji: '📄', label: 'Word',     bg: '#2b579a', fg: '#fff' },
+  gmail:    { emoji: '📧', label: 'Gmail',    bg: '#ea4335', fg: '#fff' },
+  github:   { emoji: '🐙', label: 'GitHub',   bg: '#24292e', fg: '#fff' },
+};
+
+const AVATAR_COLORS = ['#7c6cfa','#3ecf8e','#f5a623','#5b9cf6','#f56565','#a78bfa','#34d399','#fbbf24'];
+
+function avatarColor(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+// ─── UUID ────────────────────────────────────────────────────────────────────
+
+function uuid() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
+
+// ─── EMPTY DATA ───────────────────────────────────────────────────────────────
+
+function emptyData() {
+  const now = new Date().toISOString();
+  return { version: SCHEMA_VERSION, meta: { created_at: now, updated_at: now, app_version: APP_VERSION }, apps: [], shortcuts: [] };
+}
+
+// ─── FILE I/O ─────────────────────────────────────────────────────────────────
+
+const supportsFileAPI = typeof window !== 'undefined' && 'showSaveFilePicker' in window;
+
+async function createNewFile() {
+  if (supportsFileAPI) {
+    const handle = await window.showSaveFilePicker({ suggestedName: 'shortcuts.json', types: [{ description: 'JSON', accept: {'application/json': ['.json']} }] });
+    const data = emptyData();
+    const w = await handle.createWritable();
+    await w.write(JSON.stringify(data, null, 2));
+    await w.close();
+    return { handle, data };
+  }
+  return { handle: null, data: emptyData() };
+}
+
+async function openExistingFile() {
+  if (supportsFileAPI) {
+    const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }] });
+    const file = await handle.getFile();
+    const text = await file.text();
+    const data = JSON.parse(text);
+    return { handle, data };
+  } else {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return reject(new Error('No file'));
+        const text = await file.text();
+        const data = JSON.parse(text);
+        resolve({ handle: null, data });
+      };
+      input.click();
+    });
+  }
+}
+
+async function saveToHandle(handle, data) {
+  if (!handle) return false;
+  try {
+    const w = await handle.createWritable();
+    await w.write(JSON.stringify(data, null, 2));
+    await w.close();
+    return true;
+  } catch { return false; }
+}
+
+function downloadJson(data, filename = 'shortcuts.json') {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── MERGE ────────────────────────────────────────────────────────────────────
+
+function mergeData(local, imported) {
+  const merged = { ...local, meta: { ...local.meta, updated_at: new Date().toISOString() } };
+  // Apps: add new ones
+  const appIds = new Set(local.apps.map(a => a.id));
+  imported.apps.forEach(a => { if (!appIds.has(a.id)) merged.apps.push(a); });
+  // Shortcuts: last-write-wins on updated_at
+  const scMap = {};
+  local.shortcuts.forEach(s => { scMap[s.id] = s; });
+  imported.shortcuts.forEach(s => {
+    if (!scMap[s.id] || new Date(s.updated_at) > new Date(scMap[s.id].updated_at)) scMap[s.id] = s;
+  });
+  merged.shortcuts = Object.values(scMap);
+  return merged;
+}
+
+// ─── KEY RECORDER ─────────────────────────────────────────────────────────────
+
+function formatKeyCombo(e) {
+  const parts = [];
+  if (e.metaKey) parts.push('Cmd');
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  const key = e.key;
+  if (!['Meta','Control','Alt','Shift'].includes(key)) {
+    if (key === ' ') parts.push('Space');
+    else if (key.length === 1) parts.push(key.toUpperCase());
+    else parts.push(key);
+  }
+  return parts.join(' + ');
+}
+
+function formatKeyDisplay(combo) {
+  return combo
+    .replace(/Cmd/g, '⌘').replace(/Ctrl/g, '⌃').replace(/Alt/g, '⌥').replace(/Shift/g, '⇧')
+    .replace(/ \+ /g, '');
+}
+
+// ─── APP ICON COMPONENT ───────────────────────────────────────────────────────
+
+function AppIcon({ icon, name, size = 28 }) {
+  if (icon && icon.startsWith('data:')) {
+    return React.createElement('img', { src: icon, style: { width: size, height: size, borderRadius: 7, objectFit: 'cover' } });
+  }
+  if (icon && BUILTIN_ICONS[icon]) {
+    const b = BUILTIN_ICONS[icon];
+    return React.createElement('div', {
+      className: 'app-icon-wrap',
+      style: { width: size, height: size, background: b.bg, color: b.fg, fontSize: size * 0.5 }
+    }, b.emoji);
+  }
+  const letter = (name || '?')[0].toUpperCase();
+  const bg = avatarColor(name || '?');
+  return React.createElement('div', {
+    className: 'app-icon-wrap',
+    style: { width: size, height: size, background: bg, color: '#fff', fontSize: size * 0.45, letterSpacing: '-0.5px' }
+  }, letter);
+}
+
+// ─── KEY BADGE ────────────────────────────────────────────────────────────────
+
+function KeyBadge({ keys, display, variant }) {
+  const text = display || keys;
+  const cls = variant === 'mac' ? 'key-badge mac-badge' : variant === 'win' ? 'key-badge win-badge' : 'key-badge both-badge';
+  return React.createElement('span', { className: cls }, text);
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+
+const ToastCtx = createContext(null);
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const add = useCallback((msg, type = 'info') => {
+    const id = uuid();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2500);
+  }, []);
+  return React.createElement(ToastCtx.Provider, { value: add },
+    children,
+    React.createElement('div', { className: 'toast-wrap' },
+      toasts.map(t => React.createElement('div', { key: t.id, className: `toast ${t.type}` }, t.type === 'success' ? '✓ ' : t.type === 'error' ? '✕ ' : '', t.msg))
+    )
+  );
+}
+function useToast() { return useContext(ToastCtx); }
+
+// ─── KEY RECORDER COMPONENT ───────────────────────────────────────────────────
+
+function KeyRecorderInput({ value, onChange, placeholder }) {
+  const [recording, setRecording] = useState(false);
+  const inputRef = useRef(null);
+
+  const startRecord = () => {
+    setRecording(true);
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e) => {
+    if (!recording) return;
+    e.preventDefault();
+    if (e.key === 'Escape') { setRecording(false); return; }
+    const combo = formatKeyCombo(e);
+    if (combo) { onChange(combo); setRecording(false); }
+  };
+
+  return React.createElement('div', { className: 'key-input-wrap' },
+    React.createElement('input', {
+      ref: inputRef, className: `key-input ${recording ? 'recording' : ''}`,
+      placeholder: recording ? 'Press keys now…' : placeholder || 'e.g. Cmd + Shift + T',
+      value: recording ? '' : value, readOnly: recording,
+      onChange: e => !recording && onChange(e.target.value),
+      onKeyDown: handleKeyDown,
+      onBlur: () => recording && setRecording(false)
+    }),
+    React.createElement('button', { className: `record-btn ${recording ? 'recording' : ''}`, type: 'button', onClick: startRecord, title: 'Record key combo' },
+      React.createElement('span', { className: 'record-dot' }),
+      recording ? 'Stop' : 'Record'
+    )
+  );
+}
+
+// ─── ADD/EDIT SHORTCUT FORM ────────────────────────────────────────────────────
+
+function ShortcutForm({ appId, existing, onSave, onClose }) {
+  const [desc, setDesc] = useState(existing?.description || '');
+  const [macKeys, setMacKeys] = useState(existing?.keys_by_os?.mac?.keys || existing?.keys_by_os?.both?.keys || '');
+  const [winKeys, setWinKeys] = useState(existing?.keys_by_os?.windows?.keys || existing?.keys_by_os?.both?.keys || '');
+  const [sameBoth, setSameBoth] = useState(!!existing?.keys_by_os?.both);
+
+  const handleSameBoth = (v) => {
+    setSameBoth(v);
+    if (v) { setWinKeys(macKeys); }
+  };
+  const handleMacChange = (v) => { setMacKeys(v); if (sameBoth) setWinKeys(v); };
+
+  const handleSubmit = () => {
+    if (!desc.trim()) return;
+    const keys_by_os = {};
+    if (sameBoth && macKeys) {
+      keys_by_os.both = { keys: macKeys, keys_display: formatKeyDisplay(macKeys) };
+    } else {
+      if (macKeys) keys_by_os.mac = { keys: macKeys, keys_display: formatKeyDisplay(macKeys) };
+      if (winKeys) keys_by_os.windows = { keys: winKeys, keys_display: formatKeyDisplay(winKeys) };
+    }
+    const now = new Date().toISOString();
+    const sc = {
+      id: existing?.id || uuid(),
+      app_id: appId,
+      description: desc.trim(),
+      keys_by_os,
+      is_favorite: existing?.is_favorite || false,
+      sort_order: existing?.sort_order ?? 999,
+      tags: existing?.tags || [],
+      created_at: existing?.created_at || now,
+      updated_at: now
+    };
+    onSave(sc);
+  };
+
+  return React.createElement('div', { className: 'overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal' },
+      React.createElement('div', { className: 'modal-header' },
+        React.createElement('span', { className: 'modal-title' }, existing ? 'Edit shortcut' : 'Add shortcut'),
+        React.createElement('button', { className: 'modal-close', onClick: onClose }, '×')
+      ),
+      React.createElement('div', { className: 'modal-body' },
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' }, 'Description'),
+          React.createElement('input', {
+            className: 'form-input', placeholder: 'e.g. Reopen last closed tab',
+            value: desc, onChange: e => setDesc(e.target.value),
+            onKeyDown: e => e.key === 'Enter' && handleSubmit(), autoFocus: true
+          })
+        ),
+        React.createElement('div', { className: 'form-divider' }),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' },
+            React.createElement('span', { className: 'os-dot mac' }), 'Mac key combo'
+          ),
+          React.createElement(KeyRecorderInput, { value: macKeys, onChange: handleMacChange, placeholder: 'e.g. Cmd + Shift + T' })
+        ),
+        !sameBoth && React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' },
+            React.createElement('span', { className: 'os-dot win' }), 'Windows key combo'
+          ),
+          React.createElement(KeyRecorderInput, { value: winKeys, onChange: setWinKeys, placeholder: 'e.g. Ctrl + Shift + T' })
+        ),
+        React.createElement('label', { className: 'same-both' },
+          React.createElement('input', { type: 'checkbox', checked: sameBoth, onChange: e => handleSameBoth(e.target.checked) }),
+          React.createElement('span', null, 'Same key combo on both platforms')
+        )
+      ),
+      React.createElement('div', { className: 'modal-footer' },
+        React.createElement('button', { className: 'btn-sm-ghost', onClick: onClose }, 'Cancel'),
+        React.createElement('button', { className: 'btn-sm', onClick: handleSubmit, disabled: !desc.trim() }, existing ? 'Save changes' : 'Add shortcut')
+      )
+    )
+  );
+}
+
+// ─── ADD APP FORM ─────────────────────────────────────────────────────────────
+
+function AddAppForm({ onSave, onClose }) {
+  const [name, setName] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState('');
+
+  const autoIcon = name.toLowerCase().replace(/\s/g,'');
+  const effective = selectedIcon || (BUILTIN_ICONS[autoIcon] ? autoIcon : '');
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onSave({
+      id: uuid(), name: name.trim(), icon: effective || '',
+      sort_order: 999, created_at: new Date().toISOString()
+    });
+  };
+
+  return React.createElement('div', { className: 'overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal' },
+      React.createElement('div', { className: 'modal-header' },
+        React.createElement('span', { className: 'modal-title' }, 'Add application'),
+        React.createElement('button', { className: 'modal-close', onClick: onClose }, '×')
+      ),
+      React.createElement('div', { className: 'modal-body' },
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' }, 'App name'),
+          React.createElement('input', {
+            className: 'form-input', placeholder: 'e.g. Chrome, VS Code, Figma…',
+            value: name, onChange: e => setName(e.target.value),
+            onKeyDown: e => e.key === 'Enter' && handleSubmit(), autoFocus: true
+          })
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' }, 'Icon'),
+          React.createElement('div', { className: 'icon-grid' },
+            Object.entries(BUILTIN_ICONS).map(([slug, icon]) =>
+              React.createElement('div', {
+                key: slug, className: `icon-option ${effective === slug ? 'selected' : ''}`,
+                onClick: () => setSelectedIcon(selectedIcon === slug ? '' : slug), title: icon.label
+              },
+                React.createElement('div', { style: { width: 28, height: 28, borderRadius: 7, background: icon.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 } }, icon.emoji),
+                React.createElement('span', { className: 'icon-option-label' }, icon.label)
+              )
+            )
+          )
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' }, 'Preview'),
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg3)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' } },
+            React.createElement(AppIcon, { icon: effective, name: name || '?' }),
+            React.createElement('span', { style: { fontSize: 14, color: name ? 'var(--text)' : 'var(--text3)' } }, name || 'App name')
+          )
+        )
+      ),
+      React.createElement('div', { className: 'modal-footer' },
+        React.createElement('button', { className: 'btn-sm-ghost', onClick: onClose }, 'Cancel'),
+        React.createElement('button', { className: 'btn-sm', onClick: handleSubmit, disabled: !name.trim() }, 'Add app')
+      )
+    )
+  );
+}
+
+// ─── SETTINGS PANEL ───────────────────────────────────────────────────────────
+
+function SettingsPanel({ data, handle, onClose, onImport, onExport, onChangeFile }) {
+  const toast = useToast();
+  const fileInputRef = useRef(null);
+
+  const handleExport = () => { onExport(); onClose(); };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      onImport(imported);
+      toast('Library merged successfully', 'success');
+      onClose();
+    } catch { toast('Failed to parse file', 'error'); }
+    e.target.value = '';
+  };
+
+  const filePath = handle ? (handle.name || 'shortcuts.json') : (supportsFileAPI ? 'In memory (not saved)' : 'In memory – export to save');
+  const totalApps = data?.apps?.length || 0;
+  const totalShortcuts = data?.shortcuts?.length || 0;
+
+  return React.createElement('div', { className: 'overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal settings-modal' },
+      React.createElement('div', { className: 'modal-header' },
+        React.createElement('span', { className: 'modal-title' }, '⚙ Settings'),
+        React.createElement('button', { className: 'modal-close', onClick: onClose }, '×')
+      ),
+      React.createElement('div', { className: 'modal-body' },
+
+        React.createElement('div', { className: 'settings-section' },
+          React.createElement('div', { className: 'settings-section-title' }, 'Data file'),
+          React.createElement('div', { className: 'settings-row' },
+            React.createElement('div', null,
+              React.createElement('div', { className: 'settings-row-label' }, 'Current file'),
+              React.createElement('div', { className: 'settings-row-value' }, filePath)
+            ),
+            React.createElement('div', { className: 'settings-row-actions' },
+              React.createElement('button', { className: 'btn-mini accent', onClick: () => { onChangeFile(); onClose(); } }, supportsFileAPI ? 'Change' : 'Open')
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'settings-section' },
+          React.createElement('div', { className: 'settings-section-title' }, 'Library'),
+          React.createElement('div', { className: 'settings-row' },
+            React.createElement('span', { className: 'settings-row-label' }, `${totalApps} apps, ${totalShortcuts} shortcuts`),
+            React.createElement('div', { className: 'settings-row-actions' },
+              React.createElement('button', { className: 'btn-mini', onClick: handleImportClick }, 'Import & merge'),
+              React.createElement('button', { className: 'btn-mini accent', onClick: handleExport }, 'Export')
+            )
+          )
+        ),
+
+        React.createElement('div', { className: 'settings-section' },
+          React.createElement('div', { className: 'settings-section-title' }, 'About'),
+          React.createElement('div', { className: 'settings-row' },
+            React.createElement('span', { className: 'settings-row-label' }, 'Stashcut'),
+            React.createElement('span', { className: 'settings-row-value' }, `v${APP_VERSION}`)
+          )
+        )
+      ),
+      React.createElement('input', { ref: fileInputRef, type: 'file', accept: '.json', style: { display: 'none' }, onChange: handleImportFile })
+    )
+  );
+}
+
+// ─── SHORTCUT ROW ──────────────────────────────────────────────────────────────
+
+function ShortcutRow({ sc, osFilter, onStar, onEdit, onDelete }) {
+  const kbo = sc.keys_by_os || {};
+
+  const renderKeys = () => {
+    if (osFilter === 'all') {
+      const rows = [];
+      if (kbo.both) rows.push(React.createElement('div', { key: 'b', className: 'key-row' }, React.createElement(KeyBadge, { keys: kbo.both.keys, display: kbo.both.keys_display, variant: 'both' })));
+      else {
+        if (kbo.mac) rows.push(React.createElement('div', { key: 'm', className: 'key-row' }, React.createElement('span', { className: 'key-os-label mac' }, 'mac'), React.createElement(KeyBadge, { keys: kbo.mac.keys, display: kbo.mac.keys_display, variant: 'mac' })));
+        if (kbo.windows) rows.push(React.createElement('div', { key: 'w', className: 'key-row' }, React.createElement('span', { className: 'key-os-label win' }, 'win'), React.createElement(KeyBadge, { keys: kbo.windows.keys, display: kbo.windows.keys_display, variant: 'win' })));
+      }
+      return React.createElement('div', { className: 'key-group' }, ...rows);
+    }
+    const entry = osFilter === 'mac' ? (kbo.mac || kbo.both) : (kbo.windows || kbo.both);
+    if (!entry) return React.createElement('div', { className: 'key-group' }, React.createElement('span', { style: { fontSize: 11, color: 'var(--text3)' } }, 'N/A'));
+    return React.createElement('div', { className: 'key-group' }, React.createElement('div', { className: 'key-row' }, React.createElement(KeyBadge, { keys: entry.keys, display: entry.keys_display, variant: osFilter === 'mac' ? 'mac' : 'win' })));
+  };
+
+  return React.createElement('div', { className: `shortcut-row ${sc.is_favorite ? 'is-favorite' : ''}` },
+    React.createElement('span', { className: 'drag-handle', title: 'Drag to reorder' }, '⠿'),
+    React.createElement('button', { className: `star-btn ${sc.is_favorite ? 'starred' : ''}`, onClick: () => onStar(sc.id), title: sc.is_favorite ? 'Unstar' : 'Star' }, sc.is_favorite ? '★' : '☆'),
+    React.createElement('span', { className: 'shortcut-desc' }, sc.description),
+    renderKeys(),
+    React.createElement('div', { className: 'row-actions' },
+      React.createElement('button', { className: 'row-action-btn', onClick: () => onEdit(sc), title: 'Edit' }, '✎'),
+      React.createElement('button', { className: 'row-action-btn delete', onClick: () => onDelete(sc.id), title: 'Delete' }, '×')
+    )
+  );
+}
+
+// ─── WELCOME SCREEN ────────────────────────────────────────────────────────────
+
+function WelcomeScreen({ onCreateNew, onOpenExisting }) {
+  return React.createElement('div', { className: 'welcome' },
+    React.createElement('div', { className: 'welcome-grid' }),
+    React.createElement('div', { className: 'welcome-inner' },
+      React.createElement('div', { className: 'welcome-logo' }, 'Stash', React.createElement('span', null, 'cut')),
+      React.createElement('p', { className: 'welcome-tag' }, 'Your personal keyboard shortcut reference'),
+      React.createElement('div', { className: 'welcome-actions' },
+        React.createElement('button', { className: 'btn-primary', onClick: onCreateNew }, '＋ Create new library'),
+        React.createElement('button', { className: 'btn-secondary', onClick: onOpenExisting }, '📂 Open existing file')
+      ),
+      React.createElement('p', { className: 'welcome-hint' }, supportsFileAPI ? 'Files saved directly to your filesystem' : 'Running in Safari — export to save your data')
+    )
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+
+function App() {
+  const toast = useToast();
+
+  // Core state
+  const [phase, setPhase] = useState('welcome'); // 'welcome' | 'main'
+  const [data, setData] = useState(null);
+  const [handle, setHandle] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // UI state
+  const [selectedAppId, setSelectedAppId] = useState(null);
+  const [osFilter, setOsFilter] = useState('all');
+  const [sidebarSearch, setSidebarSearch] = useState('');
+  const [mainSearch, setMainSearch] = useState('');
+  const [showAddApp, setShowAddApp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editingShortcut, setEditingShortcut] = useState(null); // null | 'new' | shortcut object
+  const [showShortcutForm, setShowShortcutForm] = useState(false);
+
+  // Persist to file
+  const persist = useCallback(async (newData, newHandle) => {
+    const h = newHandle !== undefined ? newHandle : handle;
+    if (h && supportsFileAPI) {
+      const ok = await saveToHandle(h, newData);
+      if (!ok) setIsDirty(true);
+      else setIsDirty(false);
+    } else {
+      setIsDirty(true);
+    }
+  }, [handle]);
+
+  const updateData = useCallback(async (updater, h) => {
+    setData(prev => {
+      const updated = typeof updater === 'function' ? updater(prev) : updater;
+      updated.meta.updated_at = new Date().toISOString();
+      persist(updated, h);
+      return { ...updated };
+    });
+  }, [persist]);
+
+  // First launch
+  const handleCreateNew = async () => {
+    try {
+      const result = await createNewFile();
+      setHandle(result.handle);
+      setData(result.data);
+      setPhase('main');
+      if (!result.handle) toast('Working in memory — use Export to save', 'info');
+      else toast('New library created', 'success');
+    } catch (e) { if (e.name !== 'AbortError') toast('Could not create file', 'error'); }
+  };
+
+  const handleOpenExisting = async () => {
+    try {
+      const result = await openExistingFile();
+      setHandle(result.handle);
+      setData(result.data);
+      setPhase('main');
+      setSelectedAppId(result.data.apps[0]?.id || null);
+      toast('Library loaded', 'success');
+    } catch (e) { if (e.name !== 'AbortError') toast('Could not open file', 'error'); }
+  };
+
+  const handleChangeFile = async () => {
+    try {
+      const result = await openExistingFile();
+      setHandle(result.handle);
+      setData(result.data);
+      setSelectedAppId(result.data.apps[0]?.id || null);
+      toast('Switched to new file', 'success');
+    } catch (e) { if (e.name !== 'AbortError') toast('Could not open file', 'error'); }
+  };
+
+  const handleExport = () => {
+    downloadJson(data);
+    setIsDirty(false);
+    toast('Exported shortcuts.json', 'success');
+  };
+
+  const handleImport = (imported) => {
+    const merged = mergeData(data, imported);
+    updateData(merged);
+  };
+
+  // App CRUD
+  const addApp = (app) => {
+    app.sort_order = (data.apps.length);
+    updateData(prev => ({ ...prev, apps: [...prev.apps, app] }));
+    setSelectedAppId(app.id);
+    setShowAddApp(false);
+    toast(`"${app.name}" added`, 'success');
+  };
+
+  const deleteApp = (appId) => {
+    if (!confirm('Delete this app and all its shortcuts?')) return;
+    updateData(prev => ({
+      ...prev,
+      apps: prev.apps.filter(a => a.id !== appId),
+      shortcuts: prev.shortcuts.filter(s => s.app_id !== appId)
+    }));
+    if (selectedAppId === appId) setSelectedAppId(data.apps.find(a => a.id !== appId)?.id || null);
+    toast('App deleted');
+  };
+
+  // Shortcut CRUD
+  const saveShortcut = (sc) => {
+    updateData(prev => {
+      const exists = prev.shortcuts.find(s => s.id === sc.id);
+      if (exists) {
+        return { ...prev, shortcuts: prev.shortcuts.map(s => s.id === sc.id ? sc : s) };
+      }
+      sc.sort_order = prev.shortcuts.filter(s => s.app_id === sc.app_id).length;
+      return { ...prev, shortcuts: [...prev.shortcuts, sc] };
+    });
+    setShowShortcutForm(false);
+    setEditingShortcut(null);
+    toast(editingShortcut && editingShortcut !== 'new' ? 'Shortcut updated' : 'Shortcut added', 'success');
+  };
+
+  const toggleFavorite = (scId) => {
+    updateData(prev => ({
+      ...prev,
+      shortcuts: prev.shortcuts.map(s => s.id === scId ? { ...s, is_favorite: !s.is_favorite, updated_at: new Date().toISOString() } : s)
+    }));
+  };
+
+  const deleteShortcut = (scId) => {
+    updateData(prev => ({ ...prev, shortcuts: prev.shortcuts.filter(s => s.id !== scId) }));
+    toast('Shortcut deleted');
+  };
+
+  const openEditShortcut = (sc) => { setEditingShortcut(sc); setShowShortcutForm(true); };
+  const openNewShortcut = () => { setEditingShortcut('new'); setShowShortcutForm(true); };
+
+  if (phase === 'welcome') {
+    return React.createElement(WelcomeScreen, { onCreateNew: handleCreateNew, onOpenExisting: handleOpenExisting });
+  }
+
+  // Derived
+  const apps = data?.apps || [];
+  const allShortcuts = data?.shortcuts || [];
+
+  const filteredApps = sidebarSearch
+    ? apps.filter(a => a.name.toLowerCase().includes(sidebarSearch.toLowerCase()))
+    : apps;
+
+  const isSearching = mainSearch.trim().length > 0;
+
+  // Shortcuts for selected app
+  const appShortcuts = selectedAppId
+    ? allShortcuts.filter(s => s.app_id === selectedAppId)
+    : [];
+
+  const sorted = [...appShortcuts].sort((a, b) => {
+    if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1;
+    return (a.sort_order || 0) - (b.sort_order || 0);
+  });
+
+  const favorites = sorted.filter(s => s.is_favorite);
+  const rest = sorted.filter(s => !s.is_favorite);
+
+  // Global search results
+  const searchResults = isSearching ? (() => {
+    const q = mainSearch.toLowerCase();
+    const matched = allShortcuts.filter(s => {
+      const descMatch = s.description.toLowerCase().includes(q);
+      const keyMatch = Object.values(s.keys_by_os || {}).some(k => k.keys?.toLowerCase().includes(q));
+      return descMatch || keyMatch;
+    });
+    // Group by app
+    const byApp = {};
+    matched.forEach(s => {
+      if (!byApp[s.app_id]) byApp[s.app_id] = [];
+      byApp[s.app_id].push(s);
+    });
+    return byApp;
+  })() : null;
+
+  const selectedApp = apps.find(a => a.id === selectedAppId);
+  const shortcutCount = appShortcuts.length;
+
+  const isSafari = !supportsFileAPI;
+
+  return React.createElement('div', { style: { display: 'flex', flex: 1, overflow: 'hidden', flexDirection: 'column' } },
+
+    // Safari dirty banner
+    isSafari && isDirty && React.createElement('div', { className: 'safari-banner' },
+      '⚠ Changes not saved — export before closing this tab',
+      React.createElement('button', { onClick: handleExport }, 'Export now')
+    ),
+
+    React.createElement('div', { style: { display: 'flex', flex: 1, overflow: 'hidden' } },
+
+      // ── SIDEBAR ──
+      React.createElement('div', { className: 'sidebar' },
+
+        React.createElement('div', { className: 'sidebar-header' },
+          React.createElement('span', { className: 'logo' }, 'Stash', React.createElement('span', null, 'cut')),
+          React.createElement('div', { className: 'sidebar-actions' },
+            React.createElement('button', { className: 'icon-btn', onClick: () => setShowSettings(true), title: 'Settings' }, '⚙')
+          )
+        ),
+
+        React.createElement('div', { className: 'sidebar-search' },
+          React.createElement('div', { className: 'search-wrap' },
+            React.createElement('span', { className: 'search-icon' }, '⌕'),
+            React.createElement('input', { className: 'search-input', placeholder: 'Filter apps…', value: sidebarSearch, onChange: e => setSidebarSearch(e.target.value) })
+          )
+        ),
+
+        React.createElement('div', { className: 'app-list' },
+          filteredApps.length === 0 && React.createElement('div', { style: { padding: '20px 8px', textAlign: 'center', color: 'var(--text3)', fontSize: 12 } }, 'No apps yet'),
+          filteredApps.map(app => {
+            const count = allShortcuts.filter(s => s.app_id === app.id).length;
+            return React.createElement('div', {
+              key: app.id, className: `app-item ${selectedAppId === app.id ? 'active' : ''}`,
+              onClick: () => { setSelectedAppId(app.id); setMainSearch(''); }
+            },
+              React.createElement(AppIcon, { icon: app.icon, name: app.name }),
+              React.createElement('span', { className: 'app-name' }, app.name),
+              React.createElement('span', { className: 'app-count' }, count)
+            );
+          })
+        ),
+
+        React.createElement('button', { className: 'add-app-btn', onClick: () => setShowAddApp(true) }, '＋ Add application'),
+
+        React.createElement('div', { className: 'sidebar-footer' },
+          React.createElement('button', { className: 'settings-btn', onClick: () => setShowSettings(true) },
+            '⚙', React.createElement('span', null, 'Settings')
+          )
+        )
+      ),
+
+      // ── MAIN ──
+      React.createElement('div', { className: 'main' },
+
+        React.createElement('div', { className: 'toolbar' },
+          React.createElement('div', { className: 'search-main-wrap' },
+            React.createElement('span', { className: 'search-main-icon', style: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' } }, '⌕'),
+            React.createElement('input', { className: 'search-main', placeholder: 'Search all shortcuts…', value: mainSearch, onChange: e => setMainSearch(e.target.value) })
+          ),
+          React.createElement('div', { className: 'os-toggle' },
+            React.createElement('button', { className: `os-btn mac ${osFilter === 'mac' ? 'active' : ''}`, onClick: () => setOsFilter('mac') }, '⌘ Mac'),
+            React.createElement('button', { className: `os-btn win ${osFilter === 'windows' ? 'active' : ''}`, onClick: () => setOsFilter('windows') }, '⊞ Win'),
+            React.createElement('button', { className: `os-btn ${osFilter === 'all' ? 'active' : ''}`, onClick: () => setOsFilter('all') }, 'All')
+          )
+        ),
+
+        // Search results
+        isSearching ? React.createElement('div', { className: 'shortcut-list' },
+          Object.keys(searchResults).length === 0
+            ? React.createElement('div', { className: 'empty-state' }, React.createElement('div', { className: 'empty-icon' }, '🔍'), React.createElement('div', { className: 'empty-title' }, 'No results'), React.createElement('div', { className: 'empty-sub' }, `Nothing matched "${mainSearch}"`))
+            : Object.entries(searchResults).map(([appId, scs]) => {
+              const app = apps.find(a => a.id === appId);
+              return React.createElement('div', { key: appId },
+                React.createElement('div', { className: 'search-group-header' },
+                  React.createElement(AppIcon, { icon: app?.icon, name: app?.name || '?', size: 18 }),
+                  app?.name || 'Unknown app'
+                ),
+                scs.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut }))
+              );
+            })
+        )
+
+        // Normal app view
+        : !selectedAppId ? React.createElement('div', { className: 'empty-state' },
+            React.createElement('div', { className: 'empty-icon' }, '⌨'),
+            React.createElement('div', { className: 'empty-title' }, 'Select an app'),
+            React.createElement('div', { className: 'empty-sub' }, 'Choose an app from the sidebar to view its shortcuts, or add a new one to get started.'),
+            React.createElement('button', { className: 'btn-sm', style: { marginTop: 12 }, onClick: () => setShowAddApp(true) }, '＋ Add app')
+          )
+        : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' } },
+            React.createElement('div', { className: 'panel-title' },
+              React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+                React.createElement(AppIcon, { icon: selectedApp?.icon, name: selectedApp?.name || '?', size: 32 }),
+                React.createElement('h2', null, selectedApp?.name),
+                React.createElement('span', { className: 'count' }, `${shortcutCount} shortcut${shortcutCount !== 1 ? 's' : ''}`)
+              ),
+              React.createElement('div', { style: { display: 'flex', gap: 6 } },
+                React.createElement('button', { className: 'btn-sm', onClick: openNewShortcut }, '＋ Add shortcut'),
+                React.createElement('button', { className: 'btn-sm-ghost', style: { fontSize: 12, padding: '6px 10px' }, onClick: () => deleteApp(selectedAppId), title: 'Delete app' }, '🗑')
+              )
+            ),
+
+            shortcutCount === 0
+              ? React.createElement('div', { className: 'empty-state' },
+                  React.createElement('div', { className: 'empty-icon' }, '✚'),
+                  React.createElement('div', { className: 'empty-title' }, 'No shortcuts yet'),
+                  React.createElement('div', { className: 'empty-sub' }, `Add the ${selectedApp?.name} shortcuts you want to remember.`),
+                  React.createElement('button', { className: 'btn-sm', onClick: openNewShortcut }, '＋ Add shortcut')
+                )
+              : React.createElement('div', { className: 'shortcut-list' },
+                  favorites.length > 0 && React.createElement('div', { className: 'section-label' }, '★ Favorites'),
+                  favorites.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut })),
+                  rest.length > 0 && favorites.length > 0 && React.createElement('div', { className: 'section-label' }, 'All shortcuts'),
+                  rest.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut })),
+                  React.createElement('div', { className: 'add-shortcut-row', onClick: openNewShortcut },
+                    '＋ Add shortcut'
+                  )
+                )
+          )
+      )
+    ),
+
+    // ── MODALS ──
+    showAddApp && React.createElement(AddAppForm, { onSave: addApp, onClose: () => setShowAddApp(false) }),
+
+    showShortcutForm && React.createElement(ShortcutForm, {
+      appId: selectedAppId,
+      existing: editingShortcut === 'new' ? null : editingShortcut,
+      onSave: saveShortcut,
+      onClose: () => { setShowShortcutForm(false); setEditingShortcut(null); }
+    }),
+
+    showSettings && React.createElement(SettingsPanel, {
+      data, handle, onClose: () => setShowSettings(false),
+      onImport: handleImport, onExport: handleExport, onChangeFile: handleChangeFile
+    })
+  );
+}
+
+// ─── BOOTSTRAP ────────────────────────────────────────────────────────────────
+
+function Root() {
+  return React.createElement(ToastProvider, null, React.createElement(App));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(Root));
+</script>
+</body>
+</html>
