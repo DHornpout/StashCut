@@ -327,10 +327,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, kb.Edit):
 		if m.focus == panelShortcuts {
 			sc := m.list.SelectedShortcut()
+			row := m.list.SelectedRow()
 			if sc != nil {
 				app := m.sidebar.SelectedApp()
 				appID := ""
 				groupNames := []string{}
+				currentGroup := ""
 				if app != nil {
 					appID = app.ID
 					groupNames = make([]string, len(app.Groups))
@@ -338,7 +340,10 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						groupNames[i] = g.Name
 					}
 				}
-				f := NewEditShortcutForm(appID, sc, groupNames)
+				if row != nil {
+					currentGroup = row.GroupName
+				}
+				f := NewEditShortcutForm(appID, sc, groupNames, currentGroup)
 				m.form = &f
 			}
 		}
@@ -602,10 +607,42 @@ func (m AppModel) handleFormSubmit(msg FormSubmitMsg) (tea.Model, tea.Cmd) {
 		if msg.Shortcut != nil && editOriginalID != "" {
 			ai, gi, si, ok := store.FindShortcut(m.data, editOriginalID)
 			if ok {
-				m.data.Apps[ai].Groups[gi].Shortcuts[si].Description = msg.Shortcut.Description
-				m.data.Apps[ai].Groups[gi].Shortcuts[si].KeysByOS = msg.Shortcut.KeysByOS
-				m.data.Apps[ai].Groups[gi].Shortcuts[si].Tags = msg.Shortcut.Tags
-				m.data.Apps[ai].Groups[gi].Shortcuts[si].UpdatedAt = now
+				sc := m.data.Apps[ai].Groups[gi].Shortcuts[si]
+				sc.Description = msg.Shortcut.Description
+				sc.KeysByOS = msg.Shortcut.KeysByOS
+				sc.Tags = msg.Shortcut.Tags
+				sc.UpdatedAt = now
+
+				targetGroup := msg.GroupName
+				if targetGroup == "" {
+					targetGroup = m.data.Apps[ai].Groups[gi].Name // no group field shown — keep current
+				}
+
+				if targetGroup != m.data.Apps[ai].Groups[gi].Name {
+					// Remove from current group.
+					cur := m.data.Apps[ai].Groups[gi].Shortcuts
+					newCur := make([]model.Shortcut, 0, len(cur)-1)
+					for _, s := range cur {
+						if s.ID != editOriginalID {
+							newCur = append(newCur, s)
+						}
+					}
+					m.data.Apps[ai].Groups[gi].Shortcuts = newCur
+
+					// Find or create the target group.
+					tgi := store.FindGroup(&m.data.Apps[ai], targetGroup)
+					if tgi < 0 {
+						m.data.Apps[ai].Groups = append(m.data.Apps[ai].Groups, model.Group{
+							Name: targetGroup, Shortcuts: []model.Shortcut{},
+						})
+						tgi = len(m.data.Apps[ai].Groups) - 1
+					}
+					sc.SortOrder = len(m.data.Apps[ai].Groups[tgi].Shortcuts)
+					m.data.Apps[ai].Groups[tgi].Shortcuts = append(m.data.Apps[ai].Groups[tgi].Shortcuts, sc)
+				} else {
+					m.data.Apps[ai].Groups[gi].Shortcuts[si] = sc
+				}
+				m.data.Apps[ai].UpdatedAt = now
 			}
 			m.refreshShortcuts()
 			m.statusMsg = "Shortcut updated"
