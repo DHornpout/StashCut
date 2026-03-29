@@ -9,6 +9,7 @@ type AppKeyMap struct {
 	Down       key.Binding
 	Enter      key.Binding
 	New        key.Binding
+	NewGroup   key.Binding
 	Edit       key.Binding
 	Delete     key.Binding
 	Favorite   key.Binding
@@ -47,6 +48,10 @@ var Keys = AppKeyMap{
 	New: key.NewBinding(
 		key.WithKeys("n"),
 		key.WithHelp("n", "new"),
+	),
+	NewGroup: key.NewBinding(
+		key.WithKeys("g"),
+		key.WithHelp("g", "new group"),
 	),
 	Edit: key.NewBinding(
 		key.WithKeys("e"),

@@ -60,4 +60,8 @@ var (
 	StyleError = lipgloss.NewStyle().
 			Foreground(colorError).
 			Bold(true)
+
+	StyleGroupHeader = lipgloss.NewStyle().
+				Foreground(colorMuted).
+				Italic(true)
 )

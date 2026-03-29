@@ -73,22 +73,39 @@ func (s Search) View() string {
 	return barStyle.Render(prompt + s.input.View())
 }
 
-// Filter returns shortcuts matching the query across description, keys, and tags.
-func Filter(shortcuts []model.Shortcut, query string) []model.Shortcut {
+// matchesShortcut reports whether a shortcut matches the lowercase query string.
+func matchesShortcut(s model.Shortcut, q string) bool {
+	if strings.Contains(strings.ToLower(s.Description), q) {
+		return true
+	}
+	for _, t := range s.Tags {
+		if strings.Contains(strings.ToLower(t), q) {
+			return true
+		}
+	}
+	return false
+}
+
+// FilterApps returns a flat []ListRow of matching shortcuts across all apps and groups.
+// Each row carries its app display name (via appNames map keyed by appID) and group name.
+func FilterApps(apps []model.App, appNames map[string]string, query string) []ListRow {
 	if query == "" {
-		return shortcuts
+		return nil
 	}
 	q := strings.ToLower(query)
-	var result []model.Shortcut
-	for _, s := range shortcuts {
-		if strings.Contains(strings.ToLower(s.Description), q) {
-			result = append(result, s)
-			continue
-		}
-		for _, t := range s.Tags {
-			if strings.Contains(strings.ToLower(t), q) {
-				result = append(result, s)
-				break
+	var result []ListRow
+	for _, app := range apps {
+		for gi, grp := range app.Groups {
+			for si, sc := range grp.Shortcuts {
+				if matchesShortcut(sc, q) {
+					result = append(result, ListRow{
+						Kind:        RowKindShortcut,
+						GroupName:   grp.Name,
+						Shortcut:    sc,
+						GroupIndex:  gi,
+						ShortcutIdx: si,
+					})
+				}
 			}
 		}
 	}

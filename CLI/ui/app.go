@@ -95,9 +95,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Layout: searchBar(1) + panels(h) + newline(1) + statusBar(1) = m.height
-		// → panels height = m.height - 3
-		// sidebar/list internal: subtract 1 more for the "\n" before statusBar
 		m.sidebar.SetHeight(m.height - 3)
 		m.list.SetSize(m.width, m.height-3)
 		m.search.SetWidth(m.width)
@@ -126,11 +123,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Command bar eats keys
 		if m.cmdActive {
 			return m.handleCmdKey(msg)
 		}
-		// Search mode eats keys
 		if m.search.Active {
 			return m.handleSearchKey(msg)
 		}
@@ -195,6 +190,8 @@ func (m AppModel) dispatchCmd(raw string) (tea.Model, tea.Cmd) {
 func (m AppModel) importFile(path string) tea.Cmd {
 	data := m.data
 	dataPath := m.dataPath
+	prevApps := len(data.Apps)
+	prevShortcuts := store.TotalShortcuts(data)
 	return func() tea.Msg {
 		incoming, err := store.Load(path)
 		if err != nil {
@@ -203,15 +200,13 @@ func (m AppModel) importFile(path string) tea.Cmd {
 		if incoming == nil {
 			return ImportErrMsg{err: fmt.Errorf("file not found: %s", path)}
 		}
-		prevApps := len(data.Apps)
-		prevShortcuts := len(data.Shortcuts)
 		store.Merge(data, incoming)
 		if err := store.Save(dataPath, data); err != nil {
 			return ImportErrMsg{err: err}
 		}
 		return ImportDoneMsg{
 			apps:      len(data.Apps) - prevApps,
-			shortcuts: len(data.Shortcuts) - prevShortcuts,
+			shortcuts: store.TotalShortcuts(data) - prevShortcuts,
 		}
 	}
 }
@@ -309,7 +304,21 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		} else {
 			app := m.sidebar.SelectedApp()
 			if app != nil {
-				f := NewAddShortcutForm(app.ID)
+				groupNames := make([]string, len(app.Groups))
+				for i, g := range app.Groups {
+					groupNames[i] = g.Name
+				}
+				f := NewAddShortcutForm(app.ID, groupNames)
+				m.form = &f
+			}
+		}
+		return m, nil
+
+	case key.Matches(msg, kb.NewGroup):
+		if m.focus == panelShortcuts {
+			app := m.sidebar.SelectedApp()
+			if app != nil {
+				f := NewAddGroupForm(app.ID)
 				m.form = &f
 			}
 		}
@@ -321,10 +330,15 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if sc != nil {
 				app := m.sidebar.SelectedApp()
 				appID := ""
+				groupNames := []string{}
 				if app != nil {
 					appID = app.ID
+					groupNames = make([]string, len(app.Groups))
+					for i, g := range app.Groups {
+						groupNames[i] = g.Name
+					}
 				}
-				f := NewEditShortcutForm(appID, sc)
+				f := NewEditShortcutForm(appID, sc, groupNames)
 				m.form = &f
 			}
 		}
@@ -365,12 +379,11 @@ func (m AppModel) toggleFavorite() (tea.Model, tea.Cmd) {
 	if sc == nil {
 		return m, nil
 	}
-	for i, s := range m.data.Shortcuts {
-		if s.ID == sc.ID {
-			m.data.Shortcuts[i].IsFavorite = !m.data.Shortcuts[i].IsFavorite
-			break
-		}
+	ai, gi, si, ok := store.FindShortcut(m.data, sc.ID)
+	if !ok {
+		return m, nil
 	}
+	m.data.Apps[ai].Groups[gi].Shortcuts[si].IsFavorite = !m.data.Apps[ai].Groups[gi].Shortcuts[si].IsFavorite
 	m.refreshShortcuts()
 	return m, m.save()
 }
@@ -381,21 +394,13 @@ func (m AppModel) handleDelete() (tea.Model, tea.Cmd) {
 		if app == nil {
 			return m, nil
 		}
-		// Remove app and its shortcuts
 		newApps := make([]model.App, 0, len(m.data.Apps))
 		for _, a := range m.data.Apps {
 			if a.ID != app.ID {
 				newApps = append(newApps, a)
 			}
 		}
-		newShortcuts := make([]model.Shortcut, 0)
-		for _, s := range m.data.Shortcuts {
-			if s.AppID != app.ID {
-				newShortcuts = append(newShortcuts, s)
-			}
-		}
 		m.data.Apps = newApps
-		m.data.Shortcuts = newShortcuts
 		m.sidebar.Apps = newApps
 		if m.sidebar.Selected >= len(newApps) && len(newApps) > 0 {
 			m.sidebar.Selected = len(newApps) - 1
@@ -406,17 +411,62 @@ func (m AppModel) handleDelete() (tea.Model, tea.Cmd) {
 	}
 
 	if m.focus == panelShortcuts {
+		row := m.list.SelectedRow()
+		if row == nil {
+			return m, nil
+		}
+		app := m.sidebar.SelectedApp()
+		if app == nil {
+			return m, nil
+		}
+		ai := findAppIndex(m.data, app.ID)
+		if ai < 0 {
+			return m, nil
+		}
+
+		if row.Kind == RowKindHeader {
+			if row.GroupName == "Uncategorized" {
+				m.statusMsg = "Cannot delete Uncategorized group"
+				return m, nil
+			}
+			gi := store.FindGroup(&m.data.Apps[ai], row.GroupName)
+			if gi < 0 {
+				return m, nil
+			}
+			if len(m.data.Apps[ai].Groups[gi].Shortcuts) > 0 {
+				m.statusMsg = "Group is not empty — delete its shortcuts first"
+				return m, nil
+			}
+			groups := m.data.Apps[ai].Groups
+			newGroups := make([]model.Group, 0, len(groups)-1)
+			for _, g := range groups {
+				if g.Name != row.GroupName {
+					newGroups = append(newGroups, g)
+				}
+			}
+			m.data.Apps[ai].Groups = newGroups
+			m.refreshShortcuts()
+			m.statusMsg = fmt.Sprintf("Deleted group: %s", row.GroupName)
+			return m, m.save()
+		}
+
+		// Delete shortcut
 		sc := m.list.SelectedShortcut()
 		if sc == nil {
 			return m, nil
 		}
-		newShortcuts := make([]model.Shortcut, 0, len(m.data.Shortcuts))
-		for _, s := range m.data.Shortcuts {
+		_, gi, _, ok := store.FindShortcut(m.data, sc.ID)
+		if !ok {
+			return m, nil
+		}
+		shortcuts := m.data.Apps[ai].Groups[gi].Shortcuts
+		newShortcuts := make([]model.Shortcut, 0, len(shortcuts))
+		for _, s := range shortcuts {
 			if s.ID != sc.ID {
 				newShortcuts = append(newShortcuts, s)
 			}
 		}
-		m.data.Shortcuts = newShortcuts
+		m.data.Apps[ai].Groups[gi].Shortcuts = newShortcuts
 		m.refreshShortcuts()
 		m.statusMsg = "Shortcut deleted"
 		return m, m.save()
@@ -430,54 +480,33 @@ func (m AppModel) moveShortcut(direction int) (tea.Model, tea.Cmd) {
 	if sc == nil {
 		return m, nil
 	}
-	app := m.sidebar.SelectedApp()
-	if app == nil {
+	ai, gi, si, ok := store.FindShortcut(m.data, sc.ID)
+	if !ok {
 		return m, nil
 	}
 
-	// Collect app shortcuts in order
-	appShortcuts := store.ShortcutsForApp(m.data, app.ID)
-	idx := -1
-	for i, s := range appShortcuts {
-		if s.ID == sc.ID {
-			idx = i
+	group := m.data.Apps[ai].Groups[gi].Shortcuts
+	newSi := si + direction
+	if newSi < 0 || newSi >= len(group) {
+		return m, nil
+	}
+
+	group[si].SortOrder, group[newSi].SortOrder = group[newSi].SortOrder, group[si].SortOrder
+	m.data.Apps[ai].Groups[gi].Shortcuts = group
+
+	m.refreshShortcuts()
+
+	// Restore selection to the moved shortcut.
+	for i, r := range m.list.Rows {
+		if r.Kind == RowKindShortcut && r.Shortcut.ID == sc.ID {
+			m.list.Selected = i
 			break
 		}
 	}
-	newIdx := idx + direction
-	if newIdx < 0 || newIdx >= len(appShortcuts) {
-		return m, nil
-	}
-
-	// Swap sort orders
-	aID := appShortcuts[idx].ID
-	bID := appShortcuts[newIdx].ID
-	aOrder := appShortcuts[idx].SortOrder
-	bOrder := appShortcuts[newIdx].SortOrder
-	for i := range m.data.Shortcuts {
-		if m.data.Shortcuts[i].ID == aID {
-			m.data.Shortcuts[i].SortOrder = bOrder
-		} else if m.data.Shortcuts[i].ID == bID {
-			m.data.Shortcuts[i].SortOrder = aOrder
-		}
-	}
-
-	m.refreshShortcuts()
-	m.list.Selected = newIdx
 	return m, m.save()
 }
 
-func getSortOrders(shortcuts []model.Shortcut, id string) (int, bool) {
-	for _, s := range shortcuts {
-		if s.ID == id {
-			return s.SortOrder, true
-		}
-	}
-	return 0, false
-}
-
 func (m AppModel) handleFormSubmit(msg FormSubmitMsg) (tea.Model, tea.Cmd) {
-	// Capture edit original ID before clearing the form
 	var editOriginalID string
 	if m.form != nil && m.form.Original != nil {
 		editOriginalID = m.form.Original.ID
@@ -494,10 +523,11 @@ func (m AppModel) handleFormSubmit(msg FormSubmitMsg) (tea.Model, tea.Cmd) {
 		app.ID = uuid.New().String()
 		app.SortOrder = len(m.data.Apps)
 		app.CreatedAt = now
+		app.UpdatedAt = now
+		app.Groups = []model.Group{{Name: "Uncategorized", Shortcuts: []model.Shortcut{}}}
 		m.data.Apps = append(m.data.Apps, app)
 		sortApps(m.data)
 		m.sidebar.Apps = m.data.Apps
-		// Select the new app
 		for i, a := range m.data.Apps {
 			if a.ID == app.ID {
 				m.sidebar.Selected = i
@@ -507,33 +537,75 @@ func (m AppModel) handleFormSubmit(msg FormSubmitMsg) (tea.Model, tea.Cmd) {
 		m.refreshShortcuts()
 		m.statusMsg = fmt.Sprintf("Added app: %s", app.Name)
 
+	case FormModeAddGroup:
+		if msg.GroupName == "" {
+			return m, nil
+		}
+		ai := findAppIndex(m.data, msg.AppID)
+		if ai < 0 {
+			return m, nil
+		}
+		if store.FindGroup(&m.data.Apps[ai], msg.GroupName) >= 0 {
+			m.statusMsg = "Group already exists: " + msg.GroupName
+			return m, nil
+		}
+		m.data.Apps[ai].Groups = append(m.data.Apps[ai].Groups, model.Group{
+			Name:      msg.GroupName,
+			Shortcuts: []model.Shortcut{},
+		})
+		m.data.Apps[ai].UpdatedAt = now
+		m.refreshShortcuts()
+		m.statusMsg = "Group added: " + msg.GroupName
+
 	case FormModeAddShortcut:
 		if msg.Shortcut == nil || msg.Shortcut.Description == "" {
 			return m, nil
 		}
+		app := m.sidebar.SelectedApp()
+		if app == nil {
+			return m, nil
+		}
+		ai := findAppIndex(m.data, app.ID)
+		if ai < 0 {
+			return m, nil
+		}
+
+		targetGroup := msg.GroupName
+		if targetGroup == "" {
+			targetGroup = "Uncategorized"
+		}
+
+		gi := store.FindGroup(&m.data.Apps[ai], targetGroup)
+		if gi < 0 {
+			// Auto-create the group.
+			m.data.Apps[ai].Groups = append(m.data.Apps[ai].Groups, model.Group{
+				Name:      targetGroup,
+				Shortcuts: []model.Shortcut{},
+			})
+			gi = len(m.data.Apps[ai].Groups) - 1
+		}
+
 		sc := *msg.Shortcut
 		sc.ID = uuid.New().String()
-		sc.SortOrder = len(store.ShortcutsForApp(m.data, sc.AppID))
+		sc.SortOrder = len(m.data.Apps[ai].Groups[gi].Shortcuts)
 		sc.CreatedAt = now
 		sc.UpdatedAt = now
 		if sc.Tags == nil {
 			sc.Tags = []string{}
 		}
-		m.data.Shortcuts = append(m.data.Shortcuts, sc)
+		m.data.Apps[ai].Groups[gi].Shortcuts = append(m.data.Apps[ai].Groups[gi].Shortcuts, sc)
+		m.data.Apps[ai].UpdatedAt = now
 		m.refreshShortcuts()
 		m.statusMsg = "Shortcut added"
 
 	case FormModeEditShortcut:
 		if msg.Shortcut != nil && editOriginalID != "" {
-			sc := msg.Shortcut
-			for i, s := range m.data.Shortcuts {
-				if s.ID == editOriginalID {
-					m.data.Shortcuts[i].Description = sc.Description
-					m.data.Shortcuts[i].KeysByOS = sc.KeysByOS
-					m.data.Shortcuts[i].Tags = sc.Tags
-					m.data.Shortcuts[i].UpdatedAt = now
-					break
-				}
+			ai, gi, si, ok := store.FindShortcut(m.data, editOriginalID)
+			if ok {
+				m.data.Apps[ai].Groups[gi].Shortcuts[si].Description = msg.Shortcut.Description
+				m.data.Apps[ai].Groups[gi].Shortcuts[si].KeysByOS = msg.Shortcut.KeysByOS
+				m.data.Apps[ai].Groups[gi].Shortcuts[si].Tags = msg.Shortcut.Tags
+				m.data.Apps[ai].Groups[gi].Shortcuts[si].UpdatedAt = now
 			}
 			m.refreshShortcuts()
 			m.statusMsg = "Shortcut updated"
@@ -547,46 +619,76 @@ func (m *AppModel) refreshShortcuts() {
 	query := m.search.Query()
 
 	if m.search.Active && query != "" {
-		// Search across all apps
-		appNames := make(map[string]string, len(m.data.Apps))
+		// Build app name lookup keyed by shortcut ID for display.
+		appNames := make(map[string]string)
+		groupNames := make(map[string]string)
 		for _, a := range m.data.Apps {
-			name := a.Name
+			displayName := a.Name
 			if a.Icon != "" {
-				name = a.Icon + " " + name
+				displayName = a.Icon + " " + a.Name
 			}
-			appNames[a.ID] = name
+			for _, g := range a.Groups {
+				for _, sc := range g.Shortcuts {
+					appNames[sc.ID] = displayName
+					groupNames[sc.ID] = g.Name
+				}
+			}
 		}
-		results := Filter(m.data.Shortcuts, query)
-		sort.Slice(results, func(i, j int) bool {
-			if results[i].IsFavorite != results[j].IsFavorite {
-				return results[i].IsFavorite
+
+		rows := FilterApps(m.data.Apps, appNames, query)
+
+		sort.Slice(rows, func(i, j int) bool {
+			if rows[i].Shortcut.IsFavorite != rows[j].Shortcut.IsFavorite {
+				return rows[i].Shortcut.IsFavorite
 			}
-			return results[i].AppID < results[j].AppID
+			return rows[i].GroupName < rows[j].GroupName
 		})
+
 		m.list.AppNames = appNames
+		m.list.GroupNames = groupNames
 		m.list.SearchMode = true
-		m.list.SetShortcuts(results)
+		m.list.SetRows(rows)
 		return
 	}
 
-	// Normal mode: show selected app's shortcuts
+	// Normal mode: show selected app's shortcuts, grouped.
 	m.list.SearchMode = false
 	m.list.AppNames = nil
+	m.list.GroupNames = nil
 
 	app := m.sidebar.SelectedApp()
 	if app == nil {
-		m.list.SetShortcuts(nil)
+		m.list.SetRows(nil)
 		return
 	}
 
-	shortcuts := store.ShortcutsForApp(m.data, app.ID)
-	sort.Slice(shortcuts, func(i, j int) bool {
-		if shortcuts[i].IsFavorite != shortcuts[j].IsFavorite {
-			return shortcuts[i].IsFavorite
+	var rows []ListRow
+	for gi, grp := range app.Groups {
+		rows = append(rows, ListRow{
+			Kind:       RowKindHeader,
+			GroupName:  grp.Name,
+			GroupIndex: gi,
+		})
+
+		sorted := make([]model.Shortcut, len(grp.Shortcuts))
+		copy(sorted, grp.Shortcuts)
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].IsFavorite != sorted[j].IsFavorite {
+				return sorted[i].IsFavorite
+			}
+			return sorted[i].SortOrder < sorted[j].SortOrder
+		})
+		for si, sc := range sorted {
+			rows = append(rows, ListRow{
+				Kind:        RowKindShortcut,
+				GroupName:   grp.Name,
+				Shortcut:    sc,
+				GroupIndex:  gi,
+				ShortcutIdx: si,
+			})
 		}
-		return shortcuts[i].SortOrder < shortcuts[j].SortOrder
-	})
-	m.list.SetShortcuts(shortcuts)
+	}
+	m.list.SetRows(rows)
 }
 
 func (m AppModel) save() tea.Cmd {
@@ -599,27 +701,22 @@ func (m AppModel) save() tea.Cmd {
 	}
 }
 
-
 func (m AppModel) View() string {
 	if m.width == 0 {
 		return "Loading…"
 	}
 
-	// Form overlay
 	if m.form != nil && m.form.Active {
 		return m.form.View(m.width)
 	}
 
-	// Help overlay
 	if m.showHelp {
 		return m.helpView()
 	}
 
-	// Set focus flags
 	m.sidebar.Focused = m.focus == panelSidebar
 	m.list.Focused = m.focus == panelShortcuts
 
-	// Layout
 	appName := ""
 	if app := m.sidebar.SelectedApp(); app != nil {
 		icon := app.Icon
@@ -633,7 +730,6 @@ func (m AppModel) View() string {
 	sidebarView := m.sidebar.View()
 	listView := m.list.View(appName)
 
-	// Top bar: search (always 1 line) or command input
 	var topBar string
 	if m.cmdActive {
 		cmdStyle := lipgloss.NewStyle().
@@ -648,7 +744,6 @@ func (m AppModel) View() string {
 
 	panels := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, listView)
 
-	// Status bar
 	osLabel := map[string]string{
 		"all":     "All",
 		"mac":     "macOS",
@@ -662,7 +757,6 @@ func (m AppModel) View() string {
 
 	statusLeft := fmt.Sprintf(" %s%s  OS: %s", m.dataPath, dirtyMark, osLabel)
 	statusRight := m.statusMsg + "  ? help  q quit "
-	// Use rune length for proper padding
 	leftLen := len([]rune(m.dataPath)) + len("  OS: ") + len(osLabel) + 1
 	if m.dirty {
 		leftLen += len(" [unsaved]")
@@ -688,8 +782,9 @@ func (m AppModel) helpView() string {
 
   Actions
     n        New app (sidebar) / New shortcut (list)
+    g        New group (shortcut panel)
     e        Edit selected shortcut
-    d        Delete selected item
+    d        Delete selected item (shortcut or empty group)
     f        Toggle favorite on shortcut
     J / K    Move shortcut down / up (reorder)
 
@@ -718,4 +813,14 @@ func sortApps(data *model.ShortcutFile) {
 	sort.Slice(data.Apps, func(i, j int) bool {
 		return data.Apps[i].SortOrder < data.Apps[j].SortOrder
 	})
+}
+
+// findAppIndex returns the index of the app with the given ID, or -1.
+func findAppIndex(sf *model.ShortcutFile, appID string) int {
+	for i, a := range sf.Apps {
+		if a.ID == appID {
+			return i
+		}
+	}
+	return -1
 }

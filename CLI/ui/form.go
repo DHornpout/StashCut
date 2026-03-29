@@ -15,32 +15,48 @@ const (
 	FormModeAddApp FormMode = iota
 	FormModeAddShortcut
 	FormModeEditShortcut
+	FormModeAddGroup
 )
 
 type FormSubmitMsg struct {
-	Mode     FormMode
-	App      *model.App
-	Shortcut *model.Shortcut
+	Mode      FormMode
+	App       *model.App
+	Shortcut  *model.Shortcut
+	GroupName string // used for AddGroup and AddShortcut group selection
+	AppID     string // which app the group/shortcut belongs to
 }
 
 type FormCancelMsg struct{}
 
 type Form struct {
-	Mode    FormMode
-	Active  bool
-	fields  []textinput.Model
-	focused int
-	// For edit mode: the original shortcut
-	Original *model.Shortcut
-	AppID    string
+	Mode       FormMode
+	Active     bool
+	fields     []textinput.Model
+	focused    int
+	Original   *model.Shortcut
+	AppID      string
+	multiGroup bool // true when shortcut form shows a group selector field
 }
 
+// Field index constants for shortcut form (single-group mode, no group field).
 const (
 	fieldDesc    = 0
 	fieldMacKeys = 1
 	fieldWinKeys = 2
 	fieldTags    = 3
+)
 
+// Field index constants for shortcut form (multi-group mode, group field at index 1).
+const (
+	fieldDescMG    = 0
+	fieldGroupMG   = 1
+	fieldMacKeysMG = 2
+	fieldWinKeysMG = 3
+	fieldTagsMG    = 4
+)
+
+// Field index constants for app form.
+const (
 	fieldAppName = 0
 	fieldAppIcon = 1
 )
@@ -63,17 +79,37 @@ func NewAddAppForm() Form {
 	}
 }
 
-func NewAddShortcutForm(appID string) Form {
-	return newShortcutForm(FormModeAddShortcut, appID, nil)
+// NewAddGroupForm creates a form for adding a new group to an app.
+func NewAddGroupForm(appID string) Form {
+	name := textinput.New()
+	name.Placeholder = "Group name (e.g. Navigation)"
+	name.CharLimit = 64
+	name.Focus()
+
+	return Form{
+		Mode:    FormModeAddGroup,
+		Active:  true,
+		AppID:   appID,
+		fields:  []textinput.Model{name},
+		focused: 0,
+	}
 }
 
-func NewEditShortcutForm(appID string, s *model.Shortcut) Form {
-	f := newShortcutForm(FormModeEditShortcut, appID, s)
+// NewAddShortcutForm creates a form for adding a shortcut.
+// groupNames lists the existing groups; if more than one exists a group selector field is shown.
+func NewAddShortcutForm(appID string, groupNames []string) Form {
+	return newShortcutForm(FormModeAddShortcut, appID, nil, groupNames)
+}
+
+func NewEditShortcutForm(appID string, s *model.Shortcut, groupNames []string) Form {
+	f := newShortcutForm(FormModeEditShortcut, appID, s, groupNames)
 	f.Original = s
 	return f
 }
 
-func newShortcutForm(mode FormMode, appID string, s *model.Shortcut) Form {
+func newShortcutForm(mode FormMode, appID string, s *model.Shortcut, groupNames []string) Form {
+	multiGroup := len(groupNames) > 1
+
 	desc := textinput.New()
 	desc.Placeholder = "Description"
 	desc.CharLimit = 128
@@ -102,12 +138,27 @@ func newShortcutForm(mode FormMode, appID string, s *model.Shortcut) Form {
 		tags.SetValue(strings.Join(s.Tags, ", "))
 	}
 
+	var fields []textinput.Model
+	if multiGroup {
+		groupInput := textinput.New()
+		hint := strings.Join(groupNames, ", ")
+		if len(hint) > 40 {
+			hint = hint[:37] + "…"
+		}
+		groupInput.Placeholder = "Group (" + hint + ")"
+		groupInput.CharLimit = 64
+		fields = []textinput.Model{desc, groupInput, macKeys, winKeys, tags}
+	} else {
+		fields = []textinput.Model{desc, macKeys, winKeys, tags}
+	}
+
 	return Form{
-		Mode:    mode,
-		Active:  true,
-		AppID:   appID,
-		fields:  []textinput.Model{desc, macKeys, winKeys, tags},
-		focused: 0,
+		Mode:       mode,
+		Active:     true,
+		AppID:      appID,
+		fields:     fields,
+		focused:    0,
+		multiGroup: multiGroup,
 	}
 }
 
@@ -158,15 +209,37 @@ func (f Form) submit() tea.Cmd {
 				Icon: strings.TrimSpace(f.fields[fieldAppIcon].Value()),
 			}
 			return FormSubmitMsg{Mode: f.Mode, App: app}
-		default:
+
+		case FormModeAddGroup:
+			return FormSubmitMsg{
+				Mode:      f.Mode,
+				GroupName: strings.TrimSpace(f.fields[0].Value()),
+				AppID:     f.AppID,
+			}
+
+		default: // AddShortcut / EditShortcut
+			var descVal, macVal, winVal, tagsVal, groupVal string
+			if f.multiGroup {
+				descVal = strings.TrimSpace(f.fields[fieldDescMG].Value())
+				groupVal = strings.TrimSpace(f.fields[fieldGroupMG].Value())
+				macVal = strings.TrimSpace(f.fields[fieldMacKeysMG].Value())
+				winVal = strings.TrimSpace(f.fields[fieldWinKeysMG].Value())
+				tagsVal = f.fields[fieldTagsMG].Value()
+			} else {
+				descVal = strings.TrimSpace(f.fields[fieldDesc].Value())
+				macVal = strings.TrimSpace(f.fields[fieldMacKeys].Value())
+				winVal = strings.TrimSpace(f.fields[fieldWinKeys].Value())
+				tagsVal = f.fields[fieldTags].Value()
+			}
+
 			keysByOS := map[string]model.KeysForOS{}
-			if mac := strings.TrimSpace(f.fields[fieldMacKeys].Value()); mac != "" {
-				keysByOS["macos"] = model.KeysForOS{Keys: mac, KeysDisplay: mac}
+			if macVal != "" {
+				keysByOS["macos"] = model.KeysForOS{Keys: macVal, KeysDisplay: macVal}
 			}
-			if win := strings.TrimSpace(f.fields[fieldWinKeys].Value()); win != "" {
-				keysByOS["windows"] = model.KeysForOS{Keys: win, KeysDisplay: win}
+			if winVal != "" {
+				keysByOS["windows"] = model.KeysForOS{Keys: winVal, KeysDisplay: winVal}
 			}
-			rawTags := strings.Split(f.fields[fieldTags].Value(), ",")
+			rawTags := strings.Split(tagsVal, ",")
 			var tags []string
 			for _, t := range rawTags {
 				if trimmed := strings.TrimSpace(t); trimmed != "" {
@@ -174,12 +247,16 @@ func (f Form) submit() tea.Cmd {
 				}
 			}
 			sc := &model.Shortcut{
-				AppID:       f.AppID,
-				Description: strings.TrimSpace(f.fields[fieldDesc].Value()),
+				Description: descVal,
 				KeysByOS:    keysByOS,
 				Tags:        tags,
 			}
-			return FormSubmitMsg{Mode: f.Mode, Shortcut: sc}
+			return FormSubmitMsg{
+				Mode:      f.Mode,
+				Shortcut:  sc,
+				GroupName: groupVal,
+				AppID:     f.AppID,
+			}
 		}
 	}
 }
@@ -197,6 +274,8 @@ func (f Form) View(width int) string {
 		title = "New Shortcut"
 	case FormModeEditShortcut:
 		title = "Edit Shortcut"
+	case FormModeAddGroup:
+		title = "New Group"
 	}
 
 	var lines []string
@@ -226,8 +305,15 @@ func (f Form) View(width int) string {
 }
 
 func (f Form) fieldLabels() []string {
-	if f.Mode == FormModeAddApp {
+	switch f.Mode {
+	case FormModeAddApp:
 		return []string{"Name", "Icon"}
+	case FormModeAddGroup:
+		return []string{"Group Name"}
+	default:
+		if f.multiGroup {
+			return []string{"Description", "Group", "Mac Keys", "Windows Keys", "Tags"}
+		}
+		return []string{"Description", "Mac Keys", "Windows Keys", "Tags"}
 	}
-	return []string{"Description", "Mac Keys", "Windows Keys", "Tags"}
 }
