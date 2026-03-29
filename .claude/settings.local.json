@@ -9,7 +9,8 @@
       "Bash(go version:*)",
       "Bash(go mod:*)",
       "Bash(go get:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(git:*)"
     ]
   }
 }

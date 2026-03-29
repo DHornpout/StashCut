@@ -82,10 +82,9 @@ Go structs that map 1:1 to `shortcuts.json` (shared with web app):
 ```go
 // ShortcutFile is the root JSON object
 type ShortcutFile struct {
-    Version   string     `json:"version"`
-    Meta      Meta       `json:"meta"`
-    Apps      []App      `json:"apps"`
-    Shortcuts []Shortcut `json:"shortcuts"`
+    Version string `json:"version"`
+    Meta    Meta   `json:"meta"`
+    Apps    []App  `json:"apps"`
 }
 
 type Meta struct {
@@ -98,22 +97,28 @@ type App struct {
     ID        string    `json:"id"`
     Name      string    `json:"name"`
     Icon      string    `json:"icon"`
-    SortOrder int       `json:"sort_order"`
     CreatedAt time.Time `json:"created_at"`
+    UpdatedAt time.Time `json:"updated_at"`
+    Groups    []Group   `json:"groups"`
+}
+
+// Group organizes shortcuts within an app.
+// The "Uncategorized" group is mandatory and always present.
+type Group struct {
+    Name      string     `json:"name"`
+    Shortcuts []Shortcut `json:"shortcuts"`
 }
 
 type KeysForOS struct {
-    Keys        string `json:"keys"`
-    KeysDisplay string `json:"keys_display"`
+    Keys        string `json:"keys"`          // normalized: e.g. "cmd+shift+t"
+    KeysDisplay string `json:"keys_display"`  // display form: e.g. "⌘⇧T"
 }
 
 type Shortcut struct {
     ID          string               `json:"id"`
-    AppID       string               `json:"app_id"`
     Description string               `json:"description"`
     KeysByOS    map[string]KeysForOS `json:"keys_by_os"`
     IsFavorite  bool                 `json:"is_favorite"`
-    SortOrder   int                  `json:"sort_order"`
     Tags        []string             `json:"tags"`
     CreatedAt   time.Time            `json:"created_at"`
     UpdatedAt   time.Time            `json:"updated_at"`

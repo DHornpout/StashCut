@@ -68,8 +68,7 @@ The CLI shares the same `shortcuts.json` schema as the web and native apps.
 |---|---|---|
 | `version` | string | Schema version |
 | `meta` | Meta | File metadata |
-| `apps` | []App | Ordered list of apps |
-| `shortcuts` | []Shortcut | All shortcuts across all apps |
+| `apps` | []App | Ordered list of apps (array position = display order) |
 
 ### Meta
 
@@ -86,19 +85,25 @@ The CLI shares the same `shortcuts.json` schema as the web and native apps.
 | `id` | string | UUID v4 |
 | `name` | string | Display name |
 | `icon` | string | Optional emoji (1–2 chars) |
-| `sort_order` | int | Position in sidebar |
 | `created_at` | time.Time | Creation time |
+| `updated_at` | time.Time | Last modified time |
+| `groups` | []Group | Ordered list of groups. Always contains at least `"Uncategorized"`. |
+
+### Group
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Display name, unique within app. `"Uncategorized"` is the mandatory catch-all. |
+| `shortcuts` | []Shortcut | Ordered list of shortcuts (array position = display order) |
 
 ### Shortcut
 
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | UUID v4 |
-| `app_id` | string | Parent app ID |
 | `description` | string | Human-readable label |
-| `keys_by_os` | map[string]KeysForOS | Keys keyed by `"macos"` or `"windows"` |
+| `keys_by_os` | map[string]KeysForOS | Keys keyed by `"mac"`, `"windows"`, or `"both"` |
 | `is_favorite` | bool | Starred status |
-| `sort_order` | int | Position within app |
 | `tags` | []string | Searchable tags |
 | `created_at` | time.Time | Creation time |
 | `updated_at` | time.Time | Last edit time |
@@ -107,8 +112,8 @@ The CLI shares the same `shortcuts.json` schema as the web and native apps.
 
 | Field | Type | Description |
 |---|---|---|
-| `keys` | string | Raw binding (e.g. `"Cmd+Shift+P"`) |
-| `keys_display` | string | Formatted display (e.g. `"⌘⇧P"`) |
+| `keys` | string | Normalized binding: lowercase, `+` separator, no spaces (e.g. `"cmd+shift+p"`) |
+| `keys_display` | string | Formatted display (e.g. `"⌘⇧P"`). Falls back to `keys` if empty. |
 
 ---
 
@@ -183,7 +188,7 @@ The chosen path is persisted to `~/.config/stashcut/config.json` so subsequent l
 
 ## 5. Sidebar — App List
 
-- Displays all apps in `sort_order` order.
+- Displays all apps in array order.
 - Each row: `{icon} {name}` — truncated to 22 chars with `…` if longer.
 - Selected app is highlighted:
   - **Focused:** white text on dark-purple background.
@@ -229,10 +234,11 @@ An **App** column (14 chars, muted) is inserted between ★ and Description, sho
 | macOS | Visible | Hidden |
 | Windows | Hidden | Visible |
 
-### Sorting
+### Display Order
 
+Shortcuts are displayed grouped by their group name. Within each group:
 1. Favorites first (`is_favorite = true`)
-2. Then by `sort_order` ascending
+2. Then by array position
 
 ### Empty State
 
@@ -249,8 +255,8 @@ An **App** column (14 chars, muted) is inserted between ★ and Description, sho
 | `e` | Open **Edit Shortcut** form (pre-filled) |
 | `d` | Delete selected shortcut |
 | `f` | Toggle favorite on selected shortcut |
-| `J` | Move shortcut down (swap `sort_order` with next) |
-| `K` | Move shortcut up (swap `sort_order` with previous) |
+| `J` | Move shortcut down (swap array position with next) |
+| `K` | Move shortcut up (swap array position with previous) |
 
 ---
 
@@ -274,7 +280,7 @@ Does **not** match on app name or key bindings.
 
 - Shown in the Shortcut List panel with the **App** column visible.
 - Title changes to `"Search Results ({count})"`.
-- Sorted: favorites first, then by `app_id`.
+- Sorted: favorites first, then by array position, grouped by app.
 - Results update in real time as you type.
 
 ### Deactivation
@@ -315,22 +321,31 @@ All forms render as a full-screen overlay with a rounded purple border. Navigati
 | Name | 64 chars | Yes |
 | Icon | 4 chars (emoji) | No |
 
-On submit: UUID assigned, `sort_order` = current app count, `created_at` = now.
+On submit: UUID assigned, `"Uncategorized"` group created automatically, `created_at` = `updated_at` = now.
 
 ### Add Shortcut
 
 | Field | Limit | Notes |
 |---|---|---|
 | Description | 128 chars | Required |
-| Mac Keys | 64 chars | Stored under `keys_by_os["macos"]` |
-| Windows Keys | 64 chars | Stored under `keys_by_os["windows"]` |
+| Group | — | Select from existing groups for the app. Defaults to `"Uncategorized"`. |
+| Mac Keys | 64 chars | Stored under `keys_by_os["mac"]`. Normalized to lowercase+`+` on save. |
+| Windows Keys | 64 chars | Stored under `keys_by_os["windows"]`. Normalized to lowercase+`+` on save. |
 | Tags | 128 chars | Comma-separated, trimmed |
 
-On submit: UUID assigned, `sort_order` = shortcut count for app, `created_at` = `updated_at` = now.
+On submit: UUID assigned, shortcut appended to the selected group's `shortcuts` array, `created_at` = `updated_at` = now.
+
+### Add Group
+
+| Field | Limit | Notes |
+|---|---|---|
+| Name | 64 chars | Required. Must be unique within the app. `"Uncategorized"` is reserved. |
+
+On submit: group appended to the app's `groups` array with an empty `shortcuts` list.
 
 ### Edit Shortcut
 
-Same fields as Add Shortcut, pre-filled with current values. On submit: `description`, `keys_by_os`, `tags`, and `updated_at` are updated. `id`, `app_id`, `sort_order`, `created_at`, and `is_favorite` are preserved.
+Same fields as Add Shortcut, pre-filled with current values. On submit: `description`, `keys_by_os`, `group`, `tags`, and `updated_at` are updated. `id`, `created_at`, and `is_favorite` are preserved. If the group changed, the shortcut is moved to the end of the new group's array.
 
 ---
 
@@ -346,10 +361,10 @@ Same fields as Add Shortcut, pre-filled with current values. On submit: `descrip
 
 ## 11. Reordering
 
-- **`J`** — move selected shortcut down (swap `sort_order` with the next item).
-- **`K`** — move selected shortcut up (swap `sort_order` with the previous item).
+- **`J`** — move selected shortcut down (swap position with the next item in the group's array).
+- **`K`** — move selected shortcut up (swap position with the previous item in the group's array).
 - Only available in the Shortcut List panel.
-- Blocked at list boundaries (no wrap-around).
+- Blocked at group boundaries (no wrap-around, no cross-group movement).
 - Change is saved immediately.
 
 ---
@@ -358,15 +373,22 @@ Same fields as Add Shortcut, pre-filled with current values. On submit: `descrip
 
 ### Delete App (`d` in sidebar)
 
-1. Removes the app from `apps`.
-2. Removes **all shortcuts** with matching `app_id`.
-3. Selection adjusts if the deleted app was the last item.
-4. Status: `"Deleted app: {name}"`.
+1. Removes the app from the `apps` array (including all its groups and shortcuts).
+2. Selection adjusts if the deleted app was the last item.
+3. Status: `"Deleted app: {name}"`.
+4. Saved immediately.
+
+### Delete Group (`d` on a group header)
+
+1. Blocked if the group is `"Uncategorized"` — status: `"Cannot delete Uncategorized group"`.
+2. Blocked if the group contains shortcuts — status: `"Move or delete shortcuts before deleting group"`.
+3. Otherwise removes the group from the app's `groups` array.
+4. Status: `"Deleted group: {name}"`.
 5. Saved immediately.
 
 ### Delete Shortcut (`d` in shortcut list)
 
-1. Removes the shortcut from `shortcuts`.
+1. Removes the shortcut from its group's `shortcuts` array.
 2. Status: `"Shortcut deleted"`.
 3. Saved immediately.
 
@@ -410,11 +432,12 @@ Both commands support `~/` home directory expansion.
 ### Algorithm
 
 1. Load the incoming file from the specified path.
-2. **Apps:** Any app ID not present in the current data is appended (with `sort_order` = current app count).
-3. **Shortcuts:**
-   - If the incoming shortcut ID already exists and `incoming.updated_at > existing.updated_at`, the existing shortcut is replaced (last-write-wins).
-   - If the incoming shortcut ID does not exist, it is appended.
-4. The merged data is saved immediately.
+2. **Apps:** Any app ID not present in the current data is appended to the end of `apps` (with its groups and shortcuts intact).
+3. **Groups:** For apps present in both files, any group name not present in the current app is appended to the end of the app's `groups` array.
+4. **Shortcuts:** All shortcuts across all groups in the incoming file are matched by `id` against the current file:
+   - If the incoming shortcut ID already exists and `incoming.updated_at > existing.updated_at`, the existing shortcut is replaced in-place (last-write-wins).
+   - If the incoming shortcut ID does not exist, it is appended to the end of the matching group (matched by name); if no matching group exists, it is appended to `"Uncategorized"`.
+5. The merged data is saved immediately.
 
 ### Status Messages
 
