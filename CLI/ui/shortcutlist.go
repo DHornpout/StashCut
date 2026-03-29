@@ -280,7 +280,20 @@ func (sl ShortcutList) View(appName string) string {
 		end = len(sl.Rows)
 	}
 
-	// Full content width for group header separator line.
+	// Pre-compute alternating-row parity for every row across the full list so
+	// the zebra pattern is stable even when headers are scrolled off-screen.
+	altRow := make([]bool, len(sl.Rows))
+	grpPos := 0
+	for idx, r := range sl.Rows {
+		if r.Kind == RowKindHeader {
+			grpPos = 0
+			continue
+		}
+		altRow[idx] = grpPos%2 == 1
+		grpPos++
+	}
+
+	// Content width for the group section header background fill.
 	contentW := lo.favW + lo.descW + 3
 	if lo.appW > 0 {
 		contentW += lo.appW + 3
@@ -300,18 +313,15 @@ func (sl ShortcutList) View(appName string) string {
 		row := sl.Rows[i]
 
 		if row.Kind == RowKindHeader {
-			label := "── " + row.GroupName + " "
-			remaining := contentW - len([]rune(label))
-			if remaining < 0 {
-				remaining = 0
-			}
-			dataRows = append(dataRows, StyleGroupHeader.Render(label+strings.Repeat("─", remaining)))
+			// Full-width section header bar.
+			dataRows = append(dataRows, StyleGroupSectionHeader.Width(contentW).Render("▸ "+row.GroupName))
 			continue
 		}
 
 		s := row.Shortcut
 		isSelected := i == sl.Selected
 		isFocused := isSelected && sl.Focused
+		isAlt := altRow[i]
 
 		favCell := truncPad("", lo.favW)
 		if s.IsFavorite {
@@ -389,7 +399,11 @@ func (sl ShortcutList) View(appName string) string {
 				cells = append(cells, keyS.Render(winCell))
 			}
 
-			dataRows = append(dataRows, strings.Join(cells, sep))
+			line := strings.Join(cells, sep)
+			if isAlt {
+				line = StyleRowAlt.Width(contentW).Render(line)
+			}
+			dataRows = append(dataRows, line)
 		}
 	}
 
