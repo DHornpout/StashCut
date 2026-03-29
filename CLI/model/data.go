@@ -36,6 +36,7 @@ type Shortcut struct {
 	KeysByOS    map[string]KeysForOS `json:"keys_by_os"`
 	IsFavorite  bool                 `json:"is_favorite"`
 	SortOrder   int                  `json:"sort_order"`
+	Group       string               `json:"group,omitempty"`
 	Tags        []string             `json:"tags"`
 	CreatedAt   time.Time            `json:"created_at"`
 	UpdatedAt   time.Time            `json:"updated_at"`

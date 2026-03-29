@@ -315,13 +315,13 @@
   .form-label .os-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
   .form-label .os-dot.mac { background: var(--mac-color); }
   .form-label .os-dot.win { background: var(--win-color); }
-  .form-input {
+  .form-input, .group-input {
     padding: 9px 12px; background: var(--bg3); border: 1px solid var(--border);
     border-radius: var(--radius); color: var(--text); font-family: var(--font-ui); font-size: 14px;
     outline: none; transition: border-color 0.15s; width: 100%;
   }
-  .form-input:focus { border-color: var(--accent); }
-  .form-input::placeholder { color: var(--text3); }
+  .form-input:focus, .group-input:focus { border-color: var(--accent); }
+  .form-input::placeholder, .group-input::placeholder { color: var(--text3); }
 
   .key-input-wrap { display: flex; gap: 6px; }
   .key-input {
@@ -638,11 +638,12 @@ function KeyRecorderInput({ value, onChange, placeholder }) {
 
 // ─── ADD/EDIT SHORTCUT FORM ────────────────────────────────────────────────────
 
-function ShortcutForm({ appId, existing, onSave, onClose }) {
+function ShortcutForm({ appId, existing, groupNames, onSave, onClose }) {
   const [desc, setDesc] = useState(existing?.description || '');
   const [macKeys, setMacKeys] = useState(existing?.keys_by_os?.mac?.keys || existing?.keys_by_os?.both?.keys || '');
   const [winKeys, setWinKeys] = useState(existing?.keys_by_os?.windows?.keys || existing?.keys_by_os?.both?.keys || '');
   const [sameBoth, setSameBoth] = useState(!!existing?.keys_by_os?.both);
+  const [group, setGroup] = useState(existing?.group || '');
 
   const handleSameBoth = (v) => {
     setSameBoth(v);
@@ -667,6 +668,7 @@ function ShortcutForm({ appId, existing, onSave, onClose }) {
       keys_by_os,
       is_favorite: existing?.is_favorite || false,
       sort_order: existing?.sort_order ?? 999,
+      group: group.trim(),
       tags: existing?.tags || [],
       created_at: existing?.created_at || now,
       updated_at: now
@@ -688,6 +690,17 @@ function ShortcutForm({ appId, existing, onSave, onClose }) {
             value: desc, onChange: e => setDesc(e.target.value),
             onKeyDown: e => e.key === 'Enter' && handleSubmit(), autoFocus: true
           })
+        ),
+        React.createElement('div', { className: 'form-group' },
+          React.createElement('label', { className: 'form-label' }, 'Group ', React.createElement('span', { style: { color: 'var(--text3)', fontWeight: 400 } }, '(optional)')),
+          React.createElement('input', {
+            className: 'group-input', placeholder: 'e.g. Navigation, Tabs, Editing…',
+            list: 'group-suggestions',
+            value: group, onChange: e => setGroup(e.target.value)
+          }),
+          groupNames && groupNames.length > 0 && React.createElement('datalist', { id: 'group-suggestions' },
+            groupNames.map(g => React.createElement('option', { key: g, value: g }))
+          )
         ),
         React.createElement('div', { className: 'form-divider' }),
         React.createElement('div', { className: 'form-group' },
@@ -1059,6 +1072,24 @@ function App() {
   const favorites = sorted.filter(s => s.is_favorite);
   const rest = sorted.filter(s => !s.is_favorite);
 
+  // Group non-favorites by group field
+  const restByGroup = {};
+  const restUngrouped = [];
+  rest.forEach(sc => {
+    const g = sc.group && sc.group.trim();
+    if (g) {
+      if (!restByGroup[g]) restByGroup[g] = [];
+      restByGroup[g].push(sc);
+    } else {
+      restUngrouped.push(sc);
+    }
+  });
+  const restGroupNames = Object.keys(restByGroup).sort();
+  const hasGroups = restGroupNames.length > 0;
+
+  // Existing group names for the selected app (for ShortcutForm autocomplete)
+  const existingGroupNames = [...new Set(appShortcuts.map(s => s.group).filter(Boolean))].sort();
+
   // Global search results
   const searchResults = isSearching ? (() => {
     const q = mainSearch.toLowerCase();
@@ -1193,8 +1224,21 @@ function App() {
               : React.createElement('div', { className: 'shortcut-list' },
                   favorites.length > 0 && React.createElement('div', { className: 'section-label' }, '★ Favorites'),
                   favorites.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut })),
-                  rest.length > 0 && favorites.length > 0 && React.createElement('div', { className: 'section-label' }, 'All shortcuts'),
-                  rest.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut })),
+                  hasGroups ? [
+                    ...restGroupNames.map(g =>
+                      React.createElement(React.Fragment, { key: g },
+                        React.createElement('div', { className: 'section-label' }, g),
+                        restByGroup[g].map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut }))
+                      )
+                    ),
+                    restUngrouped.length > 0 && React.createElement(React.Fragment, { key: '__ungrouped' },
+                      React.createElement('div', { className: 'section-label' }, 'Other'),
+                      restUngrouped.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut }))
+                    )
+                  ] : [
+                    rest.length > 0 && favorites.length > 0 && React.createElement('div', { key: '__all-label', className: 'section-label' }, 'All shortcuts'),
+                    rest.map(sc => React.createElement(ShortcutRow, { key: sc.id, sc, osFilter, onStar: toggleFavorite, onEdit: openEditShortcut, onDelete: deleteShortcut }))
+                  ],
                   React.createElement('div', { className: 'add-shortcut-row', onClick: openNewShortcut },
                     '＋ Add shortcut'
                   )
@@ -1209,6 +1253,7 @@ function App() {
     showShortcutForm && React.createElement(ShortcutForm, {
       appId: selectedAppId,
       existing: editingShortcut === 'new' ? null : editingShortcut,
+      groupNames: existingGroupNames,
       onSave: saveShortcut,
       onClose: () => { setShowShortcutForm(false); setEditingShortcut(null); }
     }),

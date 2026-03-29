@@ -499,7 +499,7 @@ test.describe('Favorites', () => {
     await page.locator('.shortcut-row.is-favorite .star-btn').click();
 
     await expect(page.locator('.shortcut-row.is-favorite')).toHaveCount(0);
-    await expect(page.locator('.section-label')).toHaveCount(0);
+    await expect(page.locator('.section-label').filter({ hasText: '★ Favorites' })).toHaveCount(0);
   });
 
   test('favorited shortcut shows a filled star (★)', async ({ page }) => {
@@ -516,7 +516,7 @@ test.describe('Favorites', () => {
 
   test('Favorites section label disappears when there are no favorites', async ({ page }) => {
     await page.locator('.shortcut-row.is-favorite .star-btn').click();
-    await expect(page.locator('.section-label')).toHaveCount(0);
+    await expect(page.locator('.section-label').filter({ hasText: '★ Favorites' })).toHaveCount(0);
   });
 });
 

@@ -1,7 +1,7 @@
 # Stashcut — Product Specification
 
-**Version:** 0.4  
-**Date:** 2026-03-19  
+**Version:** 0.5  
+**Date:** 2026-03-29  
 **Status:** Ready for web implementation
 
 ### Changelog
@@ -12,6 +12,7 @@
 | 0.2 | 2026-03-19 | Resolved all open questions. Redesigned shortcut data model to eliminate duplicate entries for cross-OS shortcuts. Added user-configurable file path per platform. Clarified tags as v2 with suggested-tags dropdown. |
 | 0.3 | 2026-03-19 | Renamed application to Stashcut. |
 | 0.4 | 2026-03-19 | Added web-specific implementation decisions: first launch UX, key entry method, icon sourcing, OS filter default, and UI layout. Added Section 10: Web Implementation Guide. |
+| 0.5 | 2026-03-29 | Added optional `group` field to shortcut object for named in-app grouping. Added Section 4.6: data model critique (pros and cons). |
 
 ---
 
@@ -164,6 +165,7 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
   },
   "is_favorite": true,
   "sort_order": 1,
+  "group": "Tabs",
   "tags": ["tabs", "navigation"],
   "created_at": "2026-03-19T10:05:00Z",
   "updated_at": "2026-03-19T10:05:00Z"
@@ -180,6 +182,7 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
 | `keys_by_os.<os>.keys_display` | string | No | Symbol/display string (e.g. `"⌘⇧T"`). Falls back to `keys` if omitted. |
 | `is_favorite` | boolean | Yes | Whether the user has starred this shortcut. Defaults to `false`. Shared across all OS variants. |
 | `sort_order` | integer | Yes | Position within the app's shortcut list. Shared across OS variants. Lower = higher. |
+| `group` | string | No | Optional display group name within the app's shortcut list (e.g. `"Navigation"`, `"Tabs"`). Shortcuts sharing the same non-empty group string are rendered under a shared section header. Omit or use an empty string for ungrouped shortcuts. |
 | `tags` | array of strings | No | User-defined category tags. Shared across OS variants. Populated via suggested-tags dropdown in v2. |
 | `created_at` | ISO 8601 string | Yes | When the shortcut was first added. |
 | `updated_at` | ISO 8601 string | Yes | When the shortcut was last modified. Used for last-write-wins merge. |
@@ -247,6 +250,7 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
       },
       "is_favorite": true,
       "sort_order": 1,
+      "group": "Tabs",
       "tags": ["tabs", "navigation"],
       "created_at": "2026-03-19T10:05:00Z",
       "updated_at": "2026-03-19T10:05:00Z"
@@ -267,6 +271,7 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
       },
       "is_favorite": false,
       "sort_order": 2,
+      "group": "Navigation",
       "tags": ["navigation"],
       "created_at": "2026-03-19T10:06:00Z",
       "updated_at": "2026-03-19T10:06:00Z"
@@ -283,6 +288,7 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
       },
       "is_favorite": true,
       "sort_order": 1,
+      "group": "Files",
       "tags": ["files", "navigation"],
       "created_at": "2026-03-19T11:00:00Z",
       "updated_at": "2026-03-19T11:00:00Z"
@@ -303,6 +309,7 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
       },
       "is_favorite": true,
       "sort_order": 2,
+      "group": "Terminal",
       "tags": ["terminal"],
       "created_at": "2026-03-19T11:05:00Z",
       "updated_at": "2026-03-19T11:05:00Z"
@@ -329,6 +336,37 @@ The field is defined in the schema today so that any data entered in v1 (e.g. by
 
 **Why support `"both"` as a `keys_by_os` key alongside `"mac"` and `"windows"`?**  
 Some shortcuts are identical across platforms (e.g. `Ctrl+P` in VS Code). Using `"both"` avoids writing the same key combination twice while still being explicit that the entry applies on either platform.
+
+**Why add `group` as a plain string instead of a separate `groups` collection?**  
+A separate collection would require its own IDs, sort orders, and foreign-key references — adding indirection that conflicts with the simplicity goal. A plain inline string is human-readable in the raw JSON, requires no migration helper, and is trivially ignored by older clients that do not yet understand the field. Shortcuts that share the same non-empty `group` string are automatically co-located when rendered; renaming a group is a single find-and-replace on the string value.
+
+---
+
+### 4.6 Data model critique
+
+#### Pros
+
+| # | Observation |
+|---|---|
+| 1 | **Single flat file.** Everything lives in one JSON file. No database, no server, trivially portable and human-readable. |
+| 2 | **One-entry-per-action design.** Storing both OS variants inside a single shortcut entry eliminates duplication of `description`, `is_favorite`, `sort_order`, and `tags`. User preferences (star, order) apply universally. |
+| 3 | **UUID-keyed merging.** UUID v4 IDs prevent collision when two independently-edited copies of the file are merged, enabling a simple last-write-wins strategy. |
+| 4 | **Forward-compatible optional fields.** `tags` and `group` are optional — older clients that do not understand them still load the file without errors. |
+| 5 | **Explicit `sort_order`.** A dedicated integer field survives partial imports and array reordering, making intended order unambiguous. |
+| 6 | **`keys_display` separation.** Storing a raw `keys` string for search alongside a formatted `keys_display` string for rendering avoids polluting search with symbol characters while keeping display clean. |
+| 7 | **`both` OS key.** A single entry covers cross-platform identical shortcuts without repeating data, yet remains explicit and grep-friendly. |
+
+#### Cons
+
+| # | Observation |
+|---|---|
+| 1 | **No referential integrity.** `app_id` on a shortcut can reference a non-existent app. The file format has no built-in constraint to catch orphaned shortcuts; the application layer must validate. |
+| 2 | **`sort_order` is a mutable integer, not a position.** After many drag-and-drop operations, gaps and duplicates accumulate unless the application periodically renumbers. |
+| 3 | **`group` is an unvalidated free-form string.** Two shortcuts intended for the same group can silently end up in separate groups due to a typo (`"Tabs"` vs `"tabs"`). No canonical group registry exists to enforce consistency. |
+| 4 | **`meta.updated_at` is file-level, not per-app.** It is impossible to tell which app was last touched without scanning every shortcut's `updated_at`. |
+| 5 | **Schema version is a string, not an integer.** Comparing `"1.0"` to `"1.10"` as strings gives the wrong result; a semver or plain integer would be safer. |
+| 6 | **No deleted-entry tombstones.** If a shortcut is deleted locally and then merged with an older copy that still contains it, the deleted entry reappears. A `deleted_at` tombstone field would fix this. |
+| 7 | **`apps` array has no `updated_at`.** Last-write-wins merge logic only applies to shortcuts. App-level edits (rename, reorder) are not mergeable. |
 
 ---
 
