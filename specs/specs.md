@@ -1,7 +1,7 @@
 # Stashcut — Product Specification
 
-**Version:** 0.4  
-**Date:** 2026-03-19  
+**Version:** 0.5
+**Date:** 2026-03-29
 **Status:** Ready for web implementation
 
 ### Changelog
@@ -12,6 +12,7 @@
 | 0.2 | 2026-03-19 | Resolved all open questions. Redesigned shortcut data model to eliminate duplicate entries for cross-OS shortcuts. Added user-configurable file path per platform. Clarified tags as v2 with suggested-tags dropdown. |
 | 0.3 | 2026-03-19 | Renamed application to Stashcut. |
 | 0.4 | 2026-03-19 | Added web-specific implementation decisions: first launch UX, key entry method, icon sourcing, OS filter default, and UI layout. Added Section 10: Web Implementation Guide. |
+| 0.5 | 2026-03-29 | Redesigned data model: moved to nested structure (apps → groups → shortcuts), added mandatory Uncategorized catch-all group, removed sort_order (array position is order), normalized keys string to lowercase+separator format. |
 
 ---
 
@@ -105,8 +106,7 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
     "updated_at": "2026-03-19T14:30:00Z",
     "app_version": "1.0.0"
   },
-  "apps": [...],
-  "shortcuts": [...]
+  "apps": [...]
 }
 ```
 
@@ -116,8 +116,7 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
 | `meta.created_at` | ISO 8601 string | When the file was first created. |
 | `meta.updated_at` | ISO 8601 string | Last time any change was saved. |
 | `meta.app_version` | string | Version of the app that last wrote this file. |
-| `apps` | array | List of app definitions. |
-| `shortcuts` | array | List of all shortcut entries across all apps. |
+| `apps` | array | Ordered list of app definitions. Each app contains its groups and shortcuts. |
 
 ---
 
@@ -128,8 +127,9 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "Chrome",
   "icon": "chrome",
-  "sort_order": 1,
-  "created_at": "2026-03-19T10:00:00Z"
+  "created_at": "2026-03-19T10:00:00Z",
+  "updated_at": "2026-03-19T10:00:00Z",
+  "groups": [...]
 }
 ```
 
@@ -137,33 +137,50 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
 |---|---|---|---|
 | `id` | UUID v4 string | Yes | Unique identifier. Generated as UUID v4 on creation. |
 | `name` | string | Yes | Display name shown in the sidebar. |
-| App icons | Built-in icon slugs for common apps (Chrome, VS Code, Slack, Figma, Terminal, etc.). If no built-in icon matches, user can upload a custom PNG. Falls back to a generated initial avatar if neither is set. |
-| `sort_order` | integer | Yes | Position in the app sidebar list. Lower = higher in list. |
+| `icon` | string | No | Built-in icon slug or base64 image. Built-in slugs for common apps (Chrome, VS Code, Slack, Figma, Terminal, etc.). If no built-in icon matches, user can upload a custom PNG. Falls back to a generated initial avatar if neither is set. |
 | `created_at` | ISO 8601 string | Yes | When the app entry was created. |
+| `updated_at` | ISO 8601 string | Yes | When the app entry was last modified (e.g. renamed). |
+| `groups` | array | Yes | Ordered list of shortcut groups. Must contain at least one group named `"Uncategorized"`. |
 
 ---
 
-### 4.3 Shortcut object
+### 4.3 Group object
 
-**Core design principle: a shortcut entry represents one action, not one OS.** If the same action has different key combinations on Mac vs Windows, both are stored within the same entry under `keys_by_os`. Shared metadata — `description`, `is_favorite`, `sort_order`, `tags` — is defined once at the entry level and applies to all OS variants. Only the actual key combinations differ per OS.
+```json
+{
+  "name": "Navigation",
+  "shortcuts": [...]
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | Yes | Display name of the group. Unique within an app. The group named `"Uncategorized"` is the mandatory catch-all and cannot be deleted. |
+| `shortcuts` | array | Yes | Ordered list of shortcuts belonging to this group. May be empty. |
+
+**Uncategorized group rule:** Every app must have exactly one group with `name = "Uncategorized"`. This group is created automatically when a new app is added and is the default destination for all new shortcuts unless the user selects a different group. It cannot be renamed or deleted.
+
+---
+
+### 4.4 Shortcut object
+
+**Core design principle: a shortcut entry represents one action, not one OS.** If the same action has different key combinations on Mac vs Windows, both are stored within the same entry under `keys_by_os`. Shared metadata — `description`, `is_favorite`, `tags` — is defined once at the entry level and applies to all OS variants. Only the actual key combinations differ per OS.
 
 ```json
 {
   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-  "app_id": "550e8400-e29b-41d4-a716-446655440000",
   "description": "Reopen last closed tab",
   "keys_by_os": {
     "mac": {
-      "keys": "Cmd + Shift + T",
+      "keys": "cmd+shift+t",
       "keys_display": "⌘⇧T"
     },
     "windows": {
-      "keys": "Ctrl + Shift + T",
+      "keys": "ctrl+shift+t",
       "keys_display": "Ctrl+Shift+T"
     }
   },
   "is_favorite": true,
-  "sort_order": 1,
   "tags": ["tabs", "navigation"],
   "created_at": "2026-03-19T10:05:00Z",
   "updated_at": "2026-03-19T10:05:00Z"
@@ -173,16 +190,28 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `id` | UUID v4 string | Yes | Unique identifier. Generated as UUID v4 on creation. |
-| `app_id` | UUID v4 string | Yes | Foreign key reference to the parent app's `id`. |
 | `description` | string | Yes | What the shortcut does. Shared across all OS variants. Example: `"Reopen last closed tab"`. |
 | `keys_by_os` | object | Yes | Map of OS keys to their key definitions. Must have at least one of: `"mac"`, `"windows"`, `"both"`. |
-| `keys_by_os.<os>.keys` | string | Yes | Raw canonical key combination string (e.g. `"Ctrl + Shift + T"`). Used for search. |
+| `keys_by_os.<os>.keys` | string | Yes | Normalized canonical key string. Lowercase, tokens joined by `+`, no spaces (e.g. `"ctrl+shift+t"`). Used for search and programmatic processing. |
 | `keys_by_os.<os>.keys_display` | string | No | Symbol/display string (e.g. `"⌘⇧T"`). Falls back to `keys` if omitted. |
 | `is_favorite` | boolean | Yes | Whether the user has starred this shortcut. Defaults to `false`. Shared across all OS variants. |
-| `sort_order` | integer | Yes | Position within the app's shortcut list. Shared across OS variants. Lower = higher. |
 | `tags` | array of strings | No | User-defined category tags. Shared across OS variants. Populated via suggested-tags dropdown in v2. |
 | `created_at` | ISO 8601 string | Yes | When the shortcut was first added. |
 | `updated_at` | ISO 8601 string | Yes | When the shortcut was last modified. Used for last-write-wins merge. |
+
+#### `keys` format
+
+The `keys` field uses a normalized format: all lowercase, modifier and key tokens separated by `+`, no spaces.
+
+Canonical modifier names: `cmd`, `ctrl`, `alt`, `shift`, `win`.
+
+| Example action | `keys` value |
+|---|---|
+| Cmd + Shift + T | `cmd+shift+t` |
+| Ctrl + Shift + T | `ctrl+shift+t` |
+| Ctrl + ` | `ctrl+backtick` |
+| Ctrl + P | `ctrl+p` |
+| Alt + F4 | `alt+f4` |
 
 #### `keys_by_os` key reference
 
@@ -190,7 +219,7 @@ All data is stored in a single JSON file (default name `shortcuts.json`) on the 
 |---|---|
 | `"mac"` | Key combination applies to macOS only. |
 | `"windows"` | Key combination applies to Windows only. |
-| `"both"` | A single key combination identical on both platforms (e.g. `Ctrl+P` in VS Code). |
+| `"both"` | A single key combination identical on both platforms (e.g. `ctrl+p` in VS Code). |
 
 An entry may have `"mac"` and `"windows"` simultaneously (different combos), only `"both"` (same combo on both), or just one OS key if the shortcut exists on one platform only.
 
@@ -204,7 +233,7 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
 
 ---
 
-### 4.4 Full example file
+### 4.5 Full example file
 
 ```json
 {
@@ -219,93 +248,89 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "Chrome",
       "icon": "chrome",
-      "sort_order": 1,
-      "created_at": "2026-03-19T10:00:00Z"
+      "created_at": "2026-03-19T10:00:00Z",
+      "updated_at": "2026-03-19T10:00:00Z",
+      "groups": [
+        {
+          "name": "Uncategorized",
+          "shortcuts": [
+            {
+              "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+              "description": "Reopen last closed tab",
+              "keys_by_os": {
+                "mac":     { "keys": "cmd+shift+t", "keys_display": "⌘⇧T" },
+                "windows": { "keys": "ctrl+shift+t", "keys_display": "Ctrl+Shift+T" }
+              },
+              "is_favorite": true,
+              "tags": ["tabs", "navigation"],
+              "created_at": "2026-03-19T10:05:00Z",
+              "updated_at": "2026-03-19T10:05:00Z"
+            }
+          ]
+        },
+        {
+          "name": "Navigation",
+          "shortcuts": [
+            {
+              "id": "a87ff679-a2f3-471d-b2e3-5b1c56c6a1e3",
+              "description": "Focus the address bar",
+              "keys_by_os": {
+                "mac":     { "keys": "cmd+l", "keys_display": "⌘L" },
+                "windows": { "keys": "ctrl+l", "keys_display": "Ctrl+L" }
+              },
+              "is_favorite": false,
+              "tags": ["navigation"],
+              "created_at": "2026-03-19T10:06:00Z",
+              "updated_at": "2026-03-19T10:06:00Z"
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
       "name": "VS Code",
       "icon": "vscode",
-      "sort_order": 2,
-      "created_at": "2026-03-19T10:00:00Z"
-    }
-  ],
-  "shortcuts": [
-    {
-      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-      "app_id": "550e8400-e29b-41d4-a716-446655440000",
-      "description": "Reopen last closed tab",
-      "keys_by_os": {
-        "mac": {
-          "keys": "Cmd + Shift + T",
-          "keys_display": "⌘⇧T"
+      "created_at": "2026-03-19T10:00:00Z",
+      "updated_at": "2026-03-19T10:00:00Z",
+      "groups": [
+        {
+          "name": "Uncategorized",
+          "shortcuts": []
         },
-        "windows": {
-          "keys": "Ctrl + Shift + T",
-          "keys_display": "Ctrl+Shift+T"
-        }
-      },
-      "is_favorite": true,
-      "sort_order": 1,
-      "tags": ["tabs", "navigation"],
-      "created_at": "2026-03-19T10:05:00Z",
-      "updated_at": "2026-03-19T10:05:00Z"
-    },
-    {
-      "id": "a87ff679-a2f3-471d-b2e3-5b1c56c6a1e3",
-      "app_id": "550e8400-e29b-41d4-a716-446655440000",
-      "description": "Focus the address bar",
-      "keys_by_os": {
-        "mac": {
-          "keys": "Cmd + L",
-          "keys_display": "⌘L"
+        {
+          "name": "Files",
+          "shortcuts": [
+            {
+              "id": "eccbc87e-4b5c-e9fe-862a-b3fc8b9f5e6a",
+              "description": "Quick open file",
+              "keys_by_os": {
+                "both": { "keys": "ctrl+p", "keys_display": "Ctrl+P" }
+              },
+              "is_favorite": true,
+              "tags": ["files", "navigation"],
+              "created_at": "2026-03-19T11:00:00Z",
+              "updated_at": "2026-03-19T11:00:00Z"
+            }
+          ]
         },
-        "windows": {
-          "keys": "Ctrl + L",
-          "keys_display": "Ctrl+L"
+        {
+          "name": "Terminal",
+          "shortcuts": [
+            {
+              "id": "c4ca4238-a0b9-3382-8dcc-509a6f75849b",
+              "description": "Open integrated terminal",
+              "keys_by_os": {
+                "both": { "keys": "ctrl+backtick", "keys_display": "Ctrl+`" }
+              },
+              "is_favorite": true,
+              "tags": ["terminal"],
+              "created_at": "2026-03-19T11:05:00Z",
+              "updated_at": "2026-03-19T11:05:00Z"
+            }
+          ]
         }
-      },
-      "is_favorite": false,
-      "sort_order": 2,
-      "tags": ["navigation"],
-      "created_at": "2026-03-19T10:06:00Z",
-      "updated_at": "2026-03-19T10:06:00Z"
-    },
-    {
-      "id": "eccbc87e-4b5c-e9fe-862a-b3fc8b9f5e6a",
-      "app_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "description": "Quick open file",
-      "keys_by_os": {
-        "both": {
-          "keys": "Ctrl + P",
-          "keys_display": "Ctrl+P"
-        }
-      },
-      "is_favorite": true,
-      "sort_order": 1,
-      "tags": ["files", "navigation"],
-      "created_at": "2026-03-19T11:00:00Z",
-      "updated_at": "2026-03-19T11:00:00Z"
-    },
-    {
-      "id": "c4ca4238-a0b9-3382-8dcc-509a6f75849b",
-      "app_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "description": "Open integrated terminal",
-      "keys_by_os": {
-        "mac": {
-          "keys": "Ctrl + `",
-          "keys_display": "Ctrl+`"
-        },
-        "windows": {
-          "keys": "Ctrl + `",
-          "keys_display": "Ctrl+`"
-        }
-      },
-      "is_favorite": true,
-      "sort_order": 2,
-      "tags": ["terminal"],
-      "created_at": "2026-03-19T11:05:00Z",
-      "updated_at": "2026-03-19T11:05:00Z"
+      ]
     }
   ]
 }
@@ -313,22 +338,31 @@ An entry may have `"mac"` and `"windows"` simultaneously (different combos), onl
 
 ---
 
-### 4.5 Data design decisions
+### 4.6 Data design decisions
 
-**Why `keys_by_os` as a nested object instead of a flat `os` field with duplicate entries?**  
-The v0.1 design created two separate shortcut entries for "Reopen last closed tab" — one for Mac, one for Windows — duplicating `description`, `is_favorite`, `sort_order`, and `tags`. The new model stores the action once and nests only the parts that differ (the key combination) under each OS. Starring a shortcut or reordering it applies to the action universally, which is the correct behavior — a user's preference does not change based on which computer they are on.
+**Why `keys_by_os` as a nested object instead of a flat `os` field with duplicate entries?**
+The v0.1 design created two separate shortcut entries for "Reopen last closed tab" — one for Mac, one for Windows — duplicating `description`, `is_favorite`, and `tags`. The new model stores the action once and nests only the parts that differ (the key combination) under each OS. Starring a shortcut or reordering it applies to the action universally, which is the correct behavior — a user's preference does not change based on which computer they are on.
 
-**Why UUID v4 for `id` fields?**  
+**Why UUID v4 for `id` fields?**
 UUIDs prevent collisions when merging two independently maintained `shortcuts.json` files (e.g. one from a Mac, one from a Windows machine that both evolved separately). Incrementing integers would collide if both files were edited independently before being merged.
 
-**Why store `sort_order` as an integer instead of relying on array position?**  
-Array position is fragile during partial imports and merges. An explicit `sort_order` integer survives reordering operations and makes the intended order unambiguous.
+**Why use array position for ordering instead of `sort_order`?**
+For a personal reference tool with small data sets, array position is the simplest and most intuitive representation of order. An explicit integer field adds write-time complexity (every insert and reorder must update multiple records) and is easy to let drift out of sync. The import/merge algorithm uses shortcut `id` to match records and appends new items to the end of the appropriate group, which is the correct behavior for a merge.
 
-**Why is `tags` included in the schema now if it is a v2 feature?**  
+**Why a nested structure (apps → groups → shortcuts) instead of flat arrays with foreign keys?**
+The nested model directly mirrors the user's mental model: an app has groups, a group has shortcuts. Reads (rendering the UI) require no cross-array joins. Deletions cascade naturally — removing an app removes its groups and shortcuts in one operation. For a personal file with small data, the cross-entity query cost (e.g. "find all favorites") is negligible.
+
+**Why a mandatory `"Uncategorized"` group?**
+Without a catch-all group, new shortcuts have nowhere to go until the user creates a group. The mandatory `"Uncategorized"` group ensures the form can always submit without requiring the user to name a group first. It cannot be deleted or renamed, preventing orphaned shortcuts.
+
+**Why a normalized `keys` string format (lowercase, `+` separator, no spaces)?**
+A consistent format makes `keys` searchable and comparable without ad-hoc normalization. `"cmd+shift+t"` and `"Cmd + Shift + T"` are the same combo but would not match as strings. The normalized form is enforced on write (by the app) so that search and future features like conflict detection work reliably.
+
+**Why is `tags` included in the schema now if it is a v2 feature?**
 The field is defined in the schema today so that any data entered in v1 (e.g. by a power user who edits the JSON directly) is forward-compatible. Apps in v1 read and write-preserve the field but do not render any tags UI.
 
-**Why support `"both"` as a `keys_by_os` key alongside `"mac"` and `"windows"`?**  
-Some shortcuts are identical across platforms (e.g. `Ctrl+P` in VS Code). Using `"both"` avoids writing the same key combination twice while still being explicit that the entry applies on either platform.
+**Why support `"both"` as a `keys_by_os` key alongside `"mac"` and `"windows"`?**
+Some shortcuts are identical across platforms (e.g. `ctrl+p` in VS Code). Using `"both"` avoids writing the same key combination twice while still being explicit that the entry applies on either platform.
 
 ---
 
@@ -339,10 +373,11 @@ Some shortcuts are identical across platforms (e.g. `Ctrl+P` in VS Code). Using 
 2. User clicks **+** (Add shortcut). A form slides in on the right panel.
 3. The form contains:
    - **Description** — text field (required).
+   - **Group** — dropdown listing the app's groups, defaulting to `"Uncategorized"`.
    - **Mac keys** — a key combo input with a **Record** button. Clicking Record captures the next key combo pressed in the browser. A plain text field is always available as a manual fallback.
    - **Windows keys** — same dual input as Mac keys.
    - If the same combo applies to both OS, user fills in either field and checks **Same on both platforms** to mirror it automatically.
-4. User saves. The new shortcut appears at the bottom of the list for that app.
+4. User saves. The new shortcut appears at the bottom of the selected group.
 
 ### 5.2 Mark a favorite
 1. User hovers over a shortcut row.
@@ -351,9 +386,9 @@ Some shortcuts are identical across platforms (e.g. `Ctrl+P` in VS Code). Using 
 4. The star state applies to both Mac and Windows views of the same shortcut.
 
 ### 5.3 Reorder shortcuts
-1. User drags a shortcut row up or down within the list.
-2. `sort_order` values are updated and saved immediately.
-3. Favorites can only be reordered within the favorites group; non-favorites within their group.
+1. User drags a shortcut row up or down within a group.
+2. The shortcut's position in the group's `shortcuts` array is updated and saved immediately.
+3. Shortcuts cannot be dragged across group boundaries via drag-and-drop; moving a shortcut to a different group requires editing it and changing the Group field.
 4. Reordering in Mac view also reorders in Windows view (order is shared).
 
 ### 5.4 Filter by OS
@@ -475,8 +510,8 @@ This section captures all web-specific decisions and is the primary reference fo
 └──────────────────┴────────────────────────────────────┘
 ```
 
-- The sidebar lists all apps sorted by `sort_order`. Active app is highlighted.
-- The right panel shows shortcuts for the selected app, or search results across all apps when a search query is active.
+- The sidebar lists all apps in array order. Active app is highlighted.
+- The right panel shows shortcuts for the selected app, organized by group, or search results across all apps when a search query is active.
 - The **Add shortcut** form opens as an inline panel or modal overlay within the right panel — not a separate route.
 - No third detail panel in v1. Editing a shortcut opens the same Add form pre-filled.
 
@@ -502,12 +537,12 @@ Each OS key combo field (Mac and Windows) has two input modes that coexist in th
 - User clicks the **Record** button (keyboard icon).
 - The field enters a listening state ("Press keys now…").
 - The app captures `keydown` events using `event.preventDefault()` to suppress browser defaults during recording.
-- When the user releases all keys, the combo is formatted into canonical text (`Cmd + Shift + T`) and written into both `keys` and `keys_display`.
+- When the user releases all keys, the combo is normalized into canonical format (`cmd+shift+t`) and written into `keys`; a display-friendly form (`⌘⇧T`) is written into `keys_display`.
 - Recording stops automatically after capture, or on `Escape`.
 
 **Manual text mode**
 - The text input is always editable directly alongside the Record button.
-- The user may type the combo in plain text (e.g. `Ctrl + Shift + T`).
+- The user may type the combo in plain text. The app normalizes the input to lowercase with `+` separator on save (e.g. `Ctrl + Shift + T` → `ctrl+shift+t`).
 - `keys_display` is set to the same value as `keys` when entered manually, unless the user edits `keys_display` separately (advanced).
 
 **Same on both platforms checkbox**
@@ -565,9 +600,45 @@ interface StashcutStore {
   filePath: string | null                  // display only
   data: StashcutFile                       // the full in-memory JSON
   selectedAppId: string | null
+  selectedGroupName: string | null         // active group within selected app
   osFilter: 'mac' | 'windows' | 'all'     // default: 'all'
   searchQuery: string
   isDirty: boolean                         // unsaved changes flag (Safari)
+}
+
+interface StashcutFile {
+  version: string
+  meta: Meta
+  apps: App[]
+}
+
+interface App {
+  id: string
+  name: string
+  icon: string
+  created_at: string
+  updated_at: string
+  groups: Group[]
+}
+
+interface Group {
+  name: string
+  shortcuts: Shortcut[]
+}
+
+interface Shortcut {
+  id: string
+  description: string
+  keys_by_os: Record<'mac' | 'windows' | 'both', KeysForOS>
+  is_favorite: boolean
+  tags: string[]
+  created_at: string
+  updated_at: string
+}
+
+interface KeysForOS {
+  keys: string         // normalized: e.g. "cmd+shift+t"
+  keys_display?: string  // display form: e.g. "⌘⇧T"
 }
 ```
 
