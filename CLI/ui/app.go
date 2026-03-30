@@ -308,7 +308,12 @@ func (m AppModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				for i, g := range app.Groups {
 					groupNames[i] = g.Name
 				}
-				f := NewAddShortcutForm(app.ID, groupNames)
+				// Pre-select the group of the currently highlighted row.
+				defaultGroup := ""
+				if row := m.list.SelectedRow(); row != nil {
+					defaultGroup = row.GroupName
+				}
+				f := NewAddShortcutForm(app.ID, groupNames, defaultGroup)
 				m.form = &f
 			}
 		}

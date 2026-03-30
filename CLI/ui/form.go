@@ -141,9 +141,10 @@ func NewAddGroupForm(appID string) Form {
 }
 
 // NewAddShortcutForm creates a form for adding a shortcut.
+// defaultGroup pre-selects the group cycle selector; pass "" to default to the first group.
 // When groupNames has more than one entry, a cycle-select group field is shown.
-func NewAddShortcutForm(appID string, groupNames []string) Form {
-	return newShortcutForm(FormModeAddShortcut, appID, nil, groupNames, "")
+func NewAddShortcutForm(appID string, groupNames []string, defaultGroup string) Form {
+	return newShortcutForm(FormModeAddShortcut, appID, nil, groupNames, defaultGroup)
 }
 
 // NewEditShortcutForm creates a pre-filled form for editing a shortcut.

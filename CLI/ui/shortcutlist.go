@@ -369,29 +369,44 @@ func (sl ShortcutList) View(appName string) string {
 			}
 			dataRows = append(dataRows, StyleSelected.Render(strings.Join(cells, " │ ")))
 		} else {
-			styledFav := StyleFavorite.Render(favCell)
+			// Build per-cell styles that carry the alt background when needed.
+			// Each cell must include Background so the entire row is filled.
+			mutedS := StyleMuted
+			normalS := StyleNormal
+			keyS := StyleKey
+			favS := StyleFavorite
+			plainS := lipgloss.NewStyle()
+			sepStr := sep
+			if isAlt {
+				mutedS = lipgloss.NewStyle().Foreground(colorMuted).Background(colorRowAlt)
+				normalS = lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")).Background(colorRowAlt)
+				keyS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true).Background(colorRowAlt)
+				favS = lipgloss.NewStyle().Foreground(colorFav).Background(colorRowAlt)
+				plainS = lipgloss.NewStyle().Background(colorRowAlt)
+				sepStr = mutedS.Render(" │ ")
+			}
+			if isSelected {
+				accentS := lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+				if isAlt {
+					accentS = accentS.Background(colorRowAlt)
+				}
+				normalS = accentS
+				keyS = accentS
+			}
+
+			styledFav := favS.Render(favCell)
 			if !s.IsFavorite {
-				styledFav = favCell
+				styledFav = plainS.Render(favCell)
 			}
 
 			cells := []string{styledFav}
 			if lo.appW > 0 {
-				cells = append(cells, StyleMuted.Render(appCell))
+				cells = append(cells, mutedS.Render(appCell))
 			}
 			if lo.groupW > 0 {
-				cells = append(cells, StyleMuted.Render(groupCell))
+				cells = append(cells, mutedS.Render(groupCell))
 			}
-
-			descS := StyleNormal
-			if isSelected {
-				descS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-			}
-			cells = append(cells, descS.Render(descCell))
-
-			keyS := StyleKey
-			if isSelected {
-				keyS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-			}
+			cells = append(cells, normalS.Render(descCell))
 			if lo.macW > 0 {
 				cells = append(cells, keyS.Render(macCell))
 			}
@@ -399,11 +414,7 @@ func (sl ShortcutList) View(appName string) string {
 				cells = append(cells, keyS.Render(winCell))
 			}
 
-			line := strings.Join(cells, sep)
-			if isAlt {
-				line = StyleRowAlt.Width(contentW).Render(line)
-			}
-			dataRows = append(dataRows, line)
+			dataRows = append(dataRows, strings.Join(cells, sepStr))
 		}
 	}
 
