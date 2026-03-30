@@ -65,11 +65,8 @@ var (
 	colorRowAlt = lipgloss.Color("#1A1F2E")
 
 	StyleGroupSectionHeader = lipgloss.NewStyle().
-					Background(lipgloss.Color("#2D1B69")).
-					Foreground(lipgloss.Color("#C4B5FD")).
-					Bold(true).
-					Padding(0, 1)
-
-	StyleRowAlt = lipgloss.NewStyle().
-			Background(colorRowAlt)
+				Background(lipgloss.Color("#2D1B69")).
+				Foreground(lipgloss.Color("#C4B5FD")).
+				Bold(true).
+				Padding(0, 1)
 )

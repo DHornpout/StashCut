@@ -87,8 +87,9 @@ func matchesShortcut(s model.Shortcut, q string) bool {
 }
 
 // FilterApps returns a flat []ListRow of matching shortcuts across all apps and groups.
-// Each row carries its app display name (via appNames map keyed by appID) and group name.
-func FilterApps(apps []model.App, appNames map[string]string, query string) []ListRow {
+// Each row carries the group name; the caller is responsible for building any app/group
+// display maps from the returned row IDs.
+func FilterApps(apps []model.App, query string) []ListRow {
 	if query == "" {
 		return nil
 	}

@@ -677,7 +677,7 @@ func (m *AppModel) refreshShortcuts() {
 			}
 		}
 
-		rows := FilterApps(m.data.Apps, appNames, query)
+		rows := FilterApps(m.data.Apps, query)
 
 		sort.Slice(rows, func(i, j int) bool {
 			if rows[i].Shortcut.IsFavorite != rows[j].Shortcut.IsFavorite {

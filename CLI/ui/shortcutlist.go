@@ -26,9 +26,9 @@ type ListRow struct {
 }
 
 type ShortcutList struct {
-	Rows       []ListRow
-	Selected   int // always points to a RowKindShortcut when Rows is non-empty
-	Focused    bool
+	Rows     []ListRow
+	Selected int // index of the highlighted row; may be RowKindHeader or RowKindShortcut
+	Focused  bool
 	OSFilter   string            // "mac" | "windows" | "all"
 	SearchMode bool
 	AppNames   map[string]string // shortcutID -> app display name, used in search mode
@@ -53,33 +53,25 @@ func (sl *ShortcutList) SetRows(rows []ListRow) {
 	sl.offset = 0
 }
 
-// firstSelectableRow returns the index of the first RowKindShortcut, or 0.
+// firstSelectableRow returns the index of the first row, or 0.
 func (sl *ShortcutList) firstSelectableRow() int {
-	for i, r := range sl.Rows {
-		if r.Kind == RowKindShortcut {
-			return i
-		}
+	if len(sl.Rows) > 0 {
+		return 0
 	}
 	return 0
 }
 
 func (sl *ShortcutList) MoveUp() {
-	for i := sl.Selected - 1; i >= 0; i-- {
-		if sl.Rows[i].Kind == RowKindShortcut {
-			sl.Selected = i
-			sl.clampOffset()
-			return
-		}
+	if sl.Selected > 0 {
+		sl.Selected--
+		sl.clampOffset()
 	}
 }
 
 func (sl *ShortcutList) MoveDown() {
-	for i := sl.Selected + 1; i < len(sl.Rows); i++ {
-		if sl.Rows[i].Kind == RowKindShortcut {
-			sl.Selected = i
-			sl.clampOffset()
-			return
-		}
+	if sl.Selected < len(sl.Rows)-1 {
+		sl.Selected++
+		sl.clampOffset()
 	}
 }
 
@@ -87,12 +79,10 @@ func (sl *ShortcutList) SelectedShortcut() *model.Shortcut {
 	if sl.Selected < 0 || sl.Selected >= len(sl.Rows) {
 		return nil
 	}
-	row := sl.Rows[sl.Selected]
-	if row.Kind != RowKindShortcut {
+	if sl.Rows[sl.Selected].Kind != RowKindShortcut {
 		return nil
 	}
-	sc := sl.Rows[sl.Selected].Shortcut
-	return &sc
+	return &sl.Rows[sl.Selected].Shortcut
 }
 
 func (sl *ShortcutList) SelectedRow() *ListRow {
@@ -313,8 +303,13 @@ func (sl ShortcutList) View(appName string) string {
 		row := sl.Rows[i]
 
 		if row.Kind == RowKindHeader {
-			// Full-width section header bar.
-			dataRows = append(dataRows, StyleGroupSectionHeader.Width(contentW).Render("▸ "+row.GroupName))
+			headerStyle := StyleGroupSectionHeader
+			if i == sl.Selected && sl.Focused {
+				headerStyle = StyleGroupSectionHeader.
+					Background(lipgloss.Color("#4C1D95")).
+					Underline(true)
+			}
+			dataRows = append(dataRows, headerStyle.Width(contentW).Render("▸ "+row.GroupName))
 			continue
 		}
 
