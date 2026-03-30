@@ -8,13 +8,31 @@ import (
 	"github.com/stashcut/cli/model"
 )
 
+// RowKind distinguishes group header rows from shortcut rows in the list.
+type RowKind int
+
+const (
+	RowKindHeader   RowKind = iota
+	RowKindShortcut
+)
+
+// ListRow is a single renderable row — either a group header or a shortcut.
+type ListRow struct {
+	Kind        RowKind
+	GroupName   string
+	Shortcut    model.Shortcut // valid when Kind == RowKindShortcut
+	GroupIndex  int
+	ShortcutIdx int
+}
+
 type ShortcutList struct {
-	Shortcuts  []model.Shortcut
-	Selected   int
-	Focused    bool
-	OSFilter   string // "mac" | "windows" | "all"
+	Rows     []ListRow
+	Selected int // index of the highlighted row; may be RowKindHeader or RowKindShortcut
+	Focused  bool
+	OSFilter   string            // "mac" | "windows" | "all"
 	SearchMode bool
-	AppNames   map[string]string // appID -> display name, used in search mode
+	AppNames   map[string]string // shortcutID -> app display name, used in search mode
+	GroupNames map[string]string // shortcutID -> groupName, used in search mode
 	width      int
 	height     int
 	offset     int
@@ -29,15 +47,18 @@ func (sl *ShortcutList) SetSize(w, h int) {
 	sl.height = h
 }
 
-func (sl *ShortcutList) SetShortcuts(shortcuts []model.Shortcut) {
-	sl.Shortcuts = shortcuts
-	if sl.Selected >= len(sl.Shortcuts) {
-		sl.Selected = len(sl.Shortcuts) - 1
-	}
-	if sl.Selected < 0 {
-		sl.Selected = 0
-	}
+func (sl *ShortcutList) SetRows(rows []ListRow) {
+	sl.Rows = rows
+	sl.Selected = sl.firstSelectableRow()
 	sl.offset = 0
+}
+
+// firstSelectableRow returns the index of the first row, or 0.
+func (sl *ShortcutList) firstSelectableRow() int {
+	if len(sl.Rows) > 0 {
+		return 0
+	}
+	return 0
 }
 
 func (sl *ShortcutList) MoveUp() {
@@ -48,17 +69,27 @@ func (sl *ShortcutList) MoveUp() {
 }
 
 func (sl *ShortcutList) MoveDown() {
-	if sl.Selected < len(sl.Shortcuts)-1 {
+	if sl.Selected < len(sl.Rows)-1 {
 		sl.Selected++
 		sl.clampOffset()
 	}
 }
 
 func (sl *ShortcutList) SelectedShortcut() *model.Shortcut {
-	if len(sl.Shortcuts) == 0 || sl.Selected >= len(sl.Shortcuts) {
+	if sl.Selected < 0 || sl.Selected >= len(sl.Rows) {
 		return nil
 	}
-	return &sl.Shortcuts[sl.Selected]
+	if sl.Rows[sl.Selected].Kind != RowKindShortcut {
+		return nil
+	}
+	return &sl.Rows[sl.Selected].Shortcut
+}
+
+func (sl *ShortcutList) SelectedRow() *ListRow {
+	if sl.Selected >= 0 && sl.Selected < len(sl.Rows) {
+		return &sl.Rows[sl.Selected]
+	}
+	return nil
 }
 
 func (sl *ShortcutList) clampOffset() {
@@ -80,7 +111,18 @@ func (sl *ShortcutList) visibleRows() int {
 	return rows
 }
 
-// keyFor returns the display string for a shortcut on a given OS key ("macos" or "windows").
+// countShortcutRows returns the number of RowKindShortcut rows.
+func (sl *ShortcutList) countShortcutRows() int {
+	n := 0
+	for _, r := range sl.Rows {
+		if r.Kind == RowKindShortcut {
+			n++
+		}
+	}
+	return n
+}
+
+// keyFor returns the display string for a shortcut on a given OS key.
 func (sl ShortcutList) keyFor(s model.Shortcut, osKey string) string {
 	if kfo, ok := s.KeysByOS[osKey]; ok {
 		if kfo.KeysDisplay != "" {
@@ -91,11 +133,12 @@ func (sl ShortcutList) keyFor(s model.Shortcut, osKey string) string {
 	return ""
 }
 
-// colWidths computes column widths given the available panel width.
+// colLayout computes column widths given the available panel width.
 type colLayout struct {
 	panelW int
 	favW   int
 	appW   int // 0 when not in search mode
+	groupW int // 0 when not in search mode
 	descW  int
 	macW   int // 0 when OS filter hides it
 	winW   int // 0 when OS filter hides it
@@ -108,19 +151,21 @@ func (sl ShortcutList) layout() colLayout {
 	}
 
 	const (
-		favFixed = 2
-		appFixed = 14
-		macFixed = 18
-		winFixed = 18
-		sepW     = 3 // " │ "
+		favFixed   = 2
+		appFixed   = 14
+		groupFixed = 12
+		macFixed   = 18
+		winFixed   = 18
+		sepW       = 3 // " │ "
 	)
 
 	showMac := sl.OSFilter == "all" || sl.OSFilter == "mac"
 	showWin := sl.OSFilter == "all" || sl.OSFilter == "windows"
 
-	used := favFixed + sepW // fav col + first separator
+	used := favFixed + sepW
 	if sl.SearchMode {
 		used += appFixed + sepW
+		used += groupFixed + sepW
 	}
 	if showMac {
 		used += macFixed + sepW
@@ -129,7 +174,6 @@ func (sl ShortcutList) layout() colLayout {
 		used += winFixed + sepW
 	}
 
-	// StylePanel has Padding(0,1): content wraps at panelW-2, so rows must be panelW-2 wide.
 	descW := panelW - used - 2
 	if descW < 15 {
 		descW = 15
@@ -142,15 +186,17 @@ func (sl ShortcutList) layout() colLayout {
 	if showWin {
 		winW = winFixed
 	}
-	appW := 0
+	appW, groupW := 0, 0
 	if sl.SearchMode {
 		appW = appFixed
+		groupW = groupFixed
 	}
 
 	return colLayout{
 		panelW: panelW,
 		favW:   favFixed,
 		appW:   appW,
+		groupW: groupW,
 		descW:  descW,
 		macW:   macW,
 		winW:   winW,
@@ -174,19 +220,22 @@ func (sl ShortcutList) View(appName string) string {
 
 	titleText := appName
 	if sl.SearchMode {
-		titleText = fmt.Sprintf("Search Results (%d)", len(sl.Shortcuts))
+		titleText = fmt.Sprintf("Search Results (%d)", sl.countShortcutRows())
 	}
 	title := StyleTitle.Render(titleText)
 
 	lo := sl.layout()
 	sep := StyleMuted.Render(" │ ")
 
-	// ── Header row ──────────────────────────────────────────────────────────
+	// ── Column header row ────────────────────────────────────────────────────
 	hdrStyle := lipgloss.NewStyle().Bold(true).Foreground(colorMuted)
 
 	headerCells := []string{truncPad("", lo.favW)}
 	if lo.appW > 0 {
 		headerCells = append(headerCells, hdrStyle.Render(truncPad("App", lo.appW)))
+	}
+	if lo.groupW > 0 {
+		headerCells = append(headerCells, hdrStyle.Render(truncPad("Group", lo.groupW)))
 	}
 	headerCells = append(headerCells, hdrStyle.Render(truncPad("Description", lo.descW)))
 	if lo.macW > 0 {
@@ -202,6 +251,9 @@ func (sl ShortcutList) View(appName string) string {
 	if lo.appW > 0 {
 		divCells = append(divCells, strings.Repeat("─", lo.appW))
 	}
+	if lo.groupW > 0 {
+		divCells = append(divCells, strings.Repeat("─", lo.groupW))
+	}
 	divCells = append(divCells, strings.Repeat("─", lo.descW))
 	if lo.macW > 0 {
 		divCells = append(divCells, strings.Repeat("─", lo.macW))
@@ -214,15 +266,57 @@ func (sl ShortcutList) View(appName string) string {
 	// ── Data rows ────────────────────────────────────────────────────────────
 	visible := sl.visibleRows()
 	end := sl.offset + visible
-	if end > len(sl.Shortcuts) {
-		end = len(sl.Shortcuts)
+	if end > len(sl.Rows) {
+		end = len(sl.Rows)
+	}
+
+	// Pre-compute alternating-row parity for every row across the full list so
+	// the zebra pattern is stable even when headers are scrolled off-screen.
+	altRow := make([]bool, len(sl.Rows))
+	grpPos := 0
+	for idx, r := range sl.Rows {
+		if r.Kind == RowKindHeader {
+			grpPos = 0
+			continue
+		}
+		altRow[idx] = grpPos%2 == 1
+		grpPos++
+	}
+
+	// Content width for the group section header background fill.
+	contentW := lo.favW + lo.descW + 3
+	if lo.appW > 0 {
+		contentW += lo.appW + 3
+	}
+	if lo.groupW > 0 {
+		contentW += lo.groupW + 3
+	}
+	if lo.macW > 0 {
+		contentW += lo.macW + 3
+	}
+	if lo.winW > 0 {
+		contentW += lo.winW + 3
 	}
 
 	dataRows := make([]string, 0, visible)
 	for i := sl.offset; i < end; i++ {
-		s := sl.Shortcuts[i]
+		row := sl.Rows[i]
+
+		if row.Kind == RowKindHeader {
+			headerStyle := StyleGroupSectionHeader
+			if i == sl.Selected && sl.Focused {
+				headerStyle = StyleGroupSectionHeader.
+					Background(lipgloss.Color("#4C1D95")).
+					Underline(true)
+			}
+			dataRows = append(dataRows, headerStyle.Width(contentW).Render("▸ "+row.GroupName))
+			continue
+		}
+
+		s := row.Shortcut
 		isSelected := i == sl.Selected
 		isFocused := isSelected && sl.Focused
+		isAlt := altRow[i]
 
 		favCell := truncPad("", lo.favW)
 		if s.IsFavorite {
@@ -231,7 +325,17 @@ func (sl ShortcutList) View(appName string) string {
 
 		appCell := ""
 		if lo.appW > 0 {
-			appCell = truncPad(sl.AppNames[s.AppID], lo.appW)
+			appCell = truncPad(sl.AppNames[s.ID], lo.appW)
+		}
+		groupCell := ""
+		if lo.groupW > 0 {
+			gn := row.GroupName
+			if sl.GroupNames != nil {
+				if gn2, ok := sl.GroupNames[s.ID]; ok {
+					gn = gn2
+				}
+			}
+			groupCell = truncPad(gn, lo.groupW)
 		}
 		descCell := truncPad(s.Description, lo.descW)
 		macCell := ""
@@ -244,10 +348,12 @@ func (sl ShortcutList) View(appName string) string {
 		}
 
 		if isFocused {
-			// Selected + focused: plain text, let StyleSelected fill background
 			cells := []string{favCell}
 			if lo.appW > 0 {
 				cells = append(cells, appCell)
+			}
+			if lo.groupW > 0 {
+				cells = append(cells, groupCell)
 			}
 			cells = append(cells, descCell)
 			if lo.macW > 0 {
@@ -258,27 +364,44 @@ func (sl ShortcutList) View(appName string) string {
 			}
 			dataRows = append(dataRows, StyleSelected.Render(strings.Join(cells, " │ ")))
 		} else {
-			// Compose styled cells individually
-			styledFav := StyleFavorite.Render(favCell)
+			// Build per-cell styles that carry the alt background when needed.
+			// Each cell must include Background so the entire row is filled.
+			mutedS := StyleMuted
+			normalS := StyleNormal
+			keyS := StyleKey
+			favS := StyleFavorite
+			plainS := lipgloss.NewStyle()
+			sepStr := sep
+			if isAlt {
+				mutedS = lipgloss.NewStyle().Foreground(colorMuted).Background(colorRowAlt)
+				normalS = lipgloss.NewStyle().Foreground(lipgloss.Color("#D1D5DB")).Background(colorRowAlt)
+				keyS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true).Background(colorRowAlt)
+				favS = lipgloss.NewStyle().Foreground(colorFav).Background(colorRowAlt)
+				plainS = lipgloss.NewStyle().Background(colorRowAlt)
+				sepStr = mutedS.Render(" │ ")
+			}
+			if isSelected {
+				accentS := lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+				if isAlt {
+					accentS = accentS.Background(colorRowAlt)
+				}
+				normalS = accentS
+				keyS = accentS
+			}
+
+			styledFav := favS.Render(favCell)
 			if !s.IsFavorite {
-				styledFav = favCell
+				styledFav = plainS.Render(favCell)
 			}
 
 			cells := []string{styledFav}
 			if lo.appW > 0 {
-				cells = append(cells, StyleMuted.Render(appCell))
+				cells = append(cells, mutedS.Render(appCell))
 			}
-
-			descS := StyleNormal
-			if isSelected {
-				descS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
+			if lo.groupW > 0 {
+				cells = append(cells, mutedS.Render(groupCell))
 			}
-			cells = append(cells, descS.Render(descCell))
-
-			keyS := StyleKey
-			if isSelected {
-				keyS = lipgloss.NewStyle().Foreground(colorAccent).Bold(true)
-			}
+			cells = append(cells, normalS.Render(descCell))
 			if lo.macW > 0 {
 				cells = append(cells, keyS.Render(macCell))
 			}
@@ -286,11 +409,11 @@ func (sl ShortcutList) View(appName string) string {
 				cells = append(cells, keyS.Render(winCell))
 			}
 
-			dataRows = append(dataRows, strings.Join(cells, sep))
+			dataRows = append(dataRows, strings.Join(cells, sepStr))
 		}
 	}
 
-	if len(sl.Shortcuts) == 0 {
+	if len(sl.Rows) == 0 || sl.countShortcutRows() == 0 {
 		if sl.SearchMode {
 			dataRows = append(dataRows, StyleMuted.Render("No matches found."))
 		} else {
