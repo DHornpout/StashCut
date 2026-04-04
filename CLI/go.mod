@@ -1,6 +1,6 @@
 module github.com/stashcut/cli
 
-go 1.26.1
+go 1.24
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
